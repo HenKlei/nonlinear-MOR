@@ -1,0 +1,4 @@
+numpy
+scipy
+git+git://github.com/HenKlei/geodesic-shooting.git
+git+git://github.com/HenKlei/tent-pitching.git

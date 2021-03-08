@@ -1,0 +1,7 @@
+# include other requirements
+-r requirements.txt
+pytest
+pytest-memprof
+pytest-pycharm
+pytest-cov
+codecov
