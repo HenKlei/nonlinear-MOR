@@ -1,5 +1,6 @@
 # include other requirements
 -r requirements.txt
+-r requirements-optional.txt
 pytest
 pytest-memprof
 pytest-pycharm
