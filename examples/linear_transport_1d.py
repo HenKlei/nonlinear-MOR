@@ -1,37 +1,29 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
-from functools import partial
 
 from tent_pitching import perform_tent_pitching
 from tent_pitching.grids import create_uniform_grid
-from tent_pitching.visualization import (plot_1d_space_time_grid, plot_space_function,
-                                         plot_space_time_function, plot_on_reference_tent)
 from tent_pitching.operators import GridOperator
 from tent_pitching.functions import DGFunction
-from tent_pitching.discretizations import DiscontinuousGalerkin, RungeKutta4
+from tent_pitching.discretizations import DiscontinuousGalerkin, LaxFriedrichsFlux, RungeKutta4
 
-from nonlinear_mor import NonlinearReductor
+from nonlinear_mor.reductors import NonlinearReductor
+from nonlinear_mor.models import SpacetimeModel
 
 
-GLOBAL_SPACE_GRID_SIZE = 0.3333333
+GLOBAL_SPACE_GRID_SIZE = 1.
 T_MAX = 1.
-MAX_SPEED = 5.
+MAX_SPEED = 1.
 
-LOCAL_SPACE_GRID_SIZE = 1e-1
-LOCAL_TIME_GRID_SIZE = 1e-1
+LOCAL_SPACE_GRID_SIZE = 1e-2
+LOCAL_TIME_GRID_SIZE = 1e-2
 
-
-grid = create_uniform_grid(GLOBAL_SPACE_GRID_SIZE)
+N_X = 100
+N_T = 100
 
 
 def characteristic_speed(x):
     return MAX_SPEED
-
-
-space_time_grid = perform_tent_pitching(grid, T_MAX, characteristic_speed, n_max=1000, log=True)
-
-plot_1d_space_time_grid(space_time_grid, title='Space time grid obtained via tent pitching')
 
 
 def linear_transport_flux(u, mu=1.):
@@ -52,31 +44,34 @@ def u_0_function(x, jump=True):
     return 0.5 * (1.0 + np.cos(2.0 * np.pi * x)) * (0.0 <= x <= 0.5) + 0. * (x > 0.5)
 
 
-parameters = [0.25, 0.5, 0.75, 1.]
-solutions = []
+grid = create_uniform_grid(GLOBAL_SPACE_GRID_SIZE)
 
-for mu in parameters:
-    discretization = DiscontinuousGalerkin(partial(linear_transport_flux, mu=mu),
-                                           partial(linear_transport_flux_derivative, mu=mu),
-                                           partial(inverse_transformation, mu=mu),
-                                           LOCAL_SPACE_GRID_SIZE, LOCAL_TIME_GRID_SIZE)
+space_time_grid = perform_tent_pitching(grid, T_MAX, characteristic_speed, n_max=1000)
 
-    grid_operator = GridOperator(space_time_grid, discretization, DGFunction,
-                                 TimeStepperType=RungeKutta4,
-                                 local_space_grid_size=LOCAL_SPACE_GRID_SIZE,
-                                 local_time_grid_size=LOCAL_TIME_GRID_SIZE)
+lambda_ = LOCAL_TIME_GRID_SIZE / LOCAL_SPACE_GRID_SIZE
+numerical_flux = LaxFriedrichsFlux(linear_transport_flux, linear_transport_flux_derivative,
+                                   lambda_)
 
-    u_0 = grid_operator.interpolate(u_0_function)
+discretization = DiscontinuousGalerkin(numerical_flux, inverse_transformation,
+                                       LOCAL_SPACE_GRID_SIZE)
 
-    u = grid_operator.solve(u_0)
+grid_operator = GridOperator(space_time_grid, discretization, DGFunction, u_0_function,
+                             TimeStepperType=RungeKutta4,
+                             local_space_grid_size=LOCAL_SPACE_GRID_SIZE,
+                             local_time_grid_size=LOCAL_TIME_GRID_SIZE)
 
-#    plot_space_time_function(u, partial(inverse_transformation, mu=mu),
-#                             title=f'Space time solution for mu={mu}',
-#                             three_d=True, space_time_grid=space_time_grid)
+fom = SpacetimeModel(grid_operator, inverse_transformation, n_x=N_X, n_t=N_T)
 
-#    plt.show()
+N_train = 20
+parameters = np.linspace(0.25, 1., N_train)
+reference_parameter = 1.
 
-    solutions.append((mu, u))
+registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 100}
 
-reductor = NonlinearReductor(space_time_grid)
-reductor.reduce(solutions)
+reductor = NonlinearReductor(fom, parameters, reference_parameter)
+rom = reductor.reduce(registration_params=registration_params)
+
+test_parameter = 0.5
+u_red = rom.solve(test_parameter)
+plt.matshow(u_red)
+plt.show()
