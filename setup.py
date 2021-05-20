@@ -1,6 +1,11 @@
-#!/usr/bin/env python
+from setuptools import setup, find_packages
 
-from distutils.core import setup
+
+dependencies = [
+    'numpy',
+    'geodesic_shooting @ git+git://github.com/HenKlei/geodesic-shooting.git',
+    'tent_pitching @ git+git://github.com/HenKlei/tent-pitching.git',
+]
 
 setup(
     name='nonlinear-mor',
@@ -9,5 +14,6 @@ setup(
     author='Hendrik Kleikamp',
     maintainer='Hendrik Kleikamp',
     maintainer_email='hendrik.kleikamp@uni-muenster.de',
-    packages=['nonlinear_mor', ],
+    packages=find_packages(),
+    install_requires=dependencies,
 )
