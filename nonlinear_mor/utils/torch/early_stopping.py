@@ -35,14 +35,13 @@ class SimpleEarlyStoppingScheduler:
         self.best_network = None
         self.counter = 0
 
-    def __call__(self, validation_loss, training_loss, save_checkpoint=True):
-        """Check if training should be aborted due to non-decreasing validation loss (early stopping)."""
+    def __call__(self, validation_loss, training_loss):
+        """Check if training should be aborted due to non-decreasing validation loss
+           (early stopping)."""
         if self.best_loss is None:
             self.best_loss = validation_loss
             self.training_loss = training_loss
-            self.best_network = self.trainer.model
-            if save_checkpoint:
-                self.save_checkpoint()
+            self.best_network = self.trainer.network
         elif self.best_loss + self.delta <= validation_loss:
             self.counter += 1
             if self.counter >= self.patience:
@@ -54,12 +53,7 @@ class SimpleEarlyStoppingScheduler:
         else:
             self.best_loss = validation_loss
             self.training_loss = training_loss
-            self.best_model = self.trainer.model
+            self.best_model = self.trainer.network
             self.counter = 0
 
         return False
-
-    def save_checkpoint(self):
-        """Saves current weights and biases to file."""
-        if self.checkpoint_filepath:
-            self.trainer.model.save_neural_network(self.checkpoint_filepath)

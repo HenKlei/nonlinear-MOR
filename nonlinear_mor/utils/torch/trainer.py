@@ -12,8 +12,6 @@ class Trainer:
 
     Parameters
     ----------
-    model
-        Model for that the respective neural network should be trained.
     optimizer
         Optimizer to use for training.
     parameter_optimizer
@@ -215,8 +213,7 @@ class Trainer:
                 # perform validation
                 if phase == 'val':
                     # check if early stopping is possible
-                    if self.es_scheduler and self.es_scheduler(losses['val'], losses['train'],
-                                                               self.save_checkpoint):
+                    if self.es_scheduler and self.es_scheduler(losses['val'], losses['train']):
                         print()
                         print()
                         print('Early stopping...')

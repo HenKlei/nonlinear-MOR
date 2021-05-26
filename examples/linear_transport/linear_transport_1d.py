@@ -1,3 +1,4 @@
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -62,16 +63,35 @@ grid_operator = GridOperator(space_time_grid, discretization, DGFunction, u_0_fu
 
 fom = SpacetimeModel(grid_operator, inverse_transformation, n_x=N_X, n_t=N_T)
 
-N_train = 20
+N_train = 5
 parameters = np.linspace(0.25, 1., N_train)
 reference_parameter = 1.
 
-registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 100}
+gs_smoothing_params = {'alpha': 6., 'exponent': 2}
+registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 10}#00}
+restarts = 10
 
-reductor = NonlinearReductor(fom, parameters, reference_parameter)
-rom = reductor.reduce(registration_params=registration_params)
+reductor = NonlinearReductor(fom, parameters, reference_parameter,
+                             gs_smoothing_params=gs_smoothing_params)
+rom, output_dict = reductor.reduce(return_all=True, restarts=restarts,
+                                   registration_params=registration_params)
 
-test_parameter = 0.5
-u_red = rom.solve(test_parameter)
-plt.matshow(u_red)
-plt.show()
+with open('outputs/output_dict_rom', 'wb') as output_file:
+    pickle.dump(output_dict, output_file)
+
+test_parameters = [0.5, 0.75]
+for test_parameter in test_parameters:
+    u_red = rom.solve(test_parameter)
+    plt.matshow(u_red)
+    plt.savefig(f'results/result_mu_{str(test_parameter).replace(".", "_")}.png')
+    plt.close()
+    u_full = fom.solve(test_parameter)
+    plt.matshow(u_full)
+    plt.savefig(f'results/full_solution_mu_{str(test_parameter).replace(".", "_")}.png')
+    plt.close()
+    plt.matshow(u_red - u_full)
+    plt.savefig(f'results/difference_mu_{str(test_parameter).replace(".", "_")}.png')
+    plt.close()
+    with open('results/relative_errors.txt', 'a') as errors_file:
+        errors_file.write(f"{test_parameter}\t"
+                          f"{np.linalg.norm(u_red - u_full) / np.linalg.norm(u_full)}\n")
