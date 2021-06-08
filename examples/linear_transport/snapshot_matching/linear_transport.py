@@ -3,8 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import geodesic_shooting
-from geodesic_shooting.utils.io import save_image
-from geodesic_shooting.utils.visualization import plot_warpgrid, plot_vector_field
+from geodesic_shooting.utils.visualization import plot_vector_field
 
 
 if __name__ == "__main__":
@@ -15,15 +14,17 @@ if __name__ == "__main__":
         reference_solution = pickle.load(input_file)
 
     # perform the registration
-    geodesic_shooting = geodesic_shooting.GeodesicShooting(alpha=100., exponent=1.)
+    geodesic_shooting = geodesic_shooting.GeodesicShooting(alpha=1000., exponent=3.)
     image, v0, energies, Phi0, length = geodesic_shooting.register(reference_solution,
                                                                    full_solution, sigma=0.1,
-                                                                   epsilon=0.01, iterations=1500,
+                                                                   epsilon=0.01, iterations=5000,
                                                                    return_all=True)
 
-    norm = (np.linalg.norm((reference_solution - image).flatten())
-            / np.linalg.norm(reference_solution.flatten()))
+    norm = (np.linalg.norm((full_solution - image).flatten())
+            / np.linalg.norm(full_solution.flatten()))
     print(f'Relative norm of difference: {norm}')
+
+    plot_vector_field(v0)
 
     plt.matshow(reference_solution)
     plt.title("Input")

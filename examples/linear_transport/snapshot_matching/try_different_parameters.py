@@ -29,7 +29,7 @@ if __name__ == "__main__":
                                                     sigma=sigma, epsilon=epsilon, iterations=5000,
                                                     return_all=True)
 
-                    norm = (np.linalg.norm((reference_solution - image).flatten())
-                            / np.linalg.norm(reference_solution.flatten()))
+                    norm = (np.linalg.norm((full_solution - image).flatten())
+                            / np.linalg.norm(full_solution.flatten()))
                     with open('relative_errors.txt', 'a') as errors_file:
                         errors_file.write(f"{alpha}\t{exponent}\t{sigma}\t{epsilon}\t{norm}\n")

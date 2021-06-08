@@ -7,7 +7,7 @@ import geodesic_shooting
 
 
 def main(alphas: Optional[List[float]] = Option([1., ], help=''),
-         exponents: Optional[List[float]] = Option([1., ], help=''),
+         exponents: Optional[List[int]] = Option([1., ], help=''),
          sigmas: Optional[List[float]] = Option([0.1, ], help=''),
          epsilons: Optional[List[float]] = Option([0.1, ], help='')):
 
@@ -27,8 +27,8 @@ def main(alphas: Optional[List[float]] = Option([1., ], help=''),
                                                     sigma=sigma, epsilon=epsilon, iterations=5000,
                                                     return_all=True)
 
-                    norm = (np.linalg.norm((reference_solution - image).flatten())
-                            / np.linalg.norm(reference_solution.flatten()))
+                    norm = (np.linalg.norm((full_solution - image).flatten())
+                            / np.linalg.norm(full_solution.flatten()))
                     with open('relative_errors.txt', 'a') as errors_file:
                         errors_file.write(f"{alpha}\t{exponent}\t{sigma}\t{epsilon}\t{norm}\n")
 
