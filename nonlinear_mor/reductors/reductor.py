@@ -38,16 +38,18 @@ class NonlinearReductor:
             for (mu, u) in full_solutions:
 #                v0 = self.geodesic_shooter.register(self.reference_solution, u,
 #                                                    **registration_params, return_all=False)
-                img, v0, _, _, _ = self.geodesic_shooter.register(self.reference_solution, u,
-                                                                  **registration_params,
-                                                                  return_all=True)
+                result = self.geodesic_shooter.register(self.reference_solution, u,
+                                                        **registration_params, return_all=True)
+
+                transformed_input = result['transformed_input']
+                v0 = result['initial_velocity_field']
 
                 if save_intermediate_results:
                     plt.matshow(u)
                     plt.savefig(f'intermediate_results/full_solution_mu_'
                                 f'{str(mu).replace(".", "_")}.png')
                     plt.close()
-                    plt.matshow(img)
+                    plt.matshow(transformed_input)
                     plt.savefig(f'intermediate_results/mapped_solution_mu_'
                                 f'{str(mu).replace(".", "_")}.png')
                     plt.close()
@@ -55,9 +57,10 @@ class NonlinearReductor:
                     plt.savefig('intermediate_results/full_vector_field_mu_'
                                 f'{str(mu).replace(".", "_")}.png')
                     plt.close()
+                    norm = np.linalg.norm(u - transformed_input) / np.linalg.norm(u)
                     with open('intermediate_results/'
                               'relative_mapping_errors.txt', 'a') as errors_file:
-                        errors_file.write(f"{mu}\t{np.linalg.norm(u - img) / np.linalg.norm(u)}\n")
+                        errors_file.write(f"{mu}\t{norm}\n")
 
                 full_velocity_fields.append(v0.flatten())
 
