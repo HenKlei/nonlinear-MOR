@@ -14,13 +14,14 @@ if __name__ == "__main__":
         reference_solution = pickle.load(input_file)
 
     # perform the registration
-    geodesic_shooting = geodesic_shooting.GeodesicShooting(alpha=1000., exponent=3.)
-    image, v0, energies, Phi0, length = geodesic_shooting.register(reference_solution,
-                                                                   full_solution, sigma=0.1,
-                                                                   epsilon=0.01, iterations=5000,
-                                                                   return_all=True)
+    gs = geodesic_shooting.GeodesicShooting(alpha=1000., exponent=3.)
+    result = gs.register(reference_solution, full_solution, sigma=0.1, epsilon=0.01,
+                         iterations=5000, return_all=True)
 
-    norm = (np.linalg.norm((full_solution - image).flatten())
+    transformed_input = result['transformed_input']
+    v0 = result['initial_velocity_field']
+
+    norm = (np.linalg.norm((full_solution - transformed_input).flatten())
             / np.linalg.norm(full_solution.flatten()))
     print(f'Relative norm of difference: {norm}')
 
@@ -30,6 +31,6 @@ if __name__ == "__main__":
     plt.title("Input")
     plt.matshow(full_solution)
     plt.title("Target")
-    plt.matshow(image)
+    plt.matshow(transformed_input)
     plt.title("Result")
     plt.show()
