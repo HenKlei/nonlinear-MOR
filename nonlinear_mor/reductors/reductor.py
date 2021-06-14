@@ -2,6 +2,8 @@ import pickle
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from functools import partial
+import multiprocessing
 
 import geodesic_shooting
 from geodesic_shooting.utils.visualization import plot_vector_field
@@ -32,43 +34,52 @@ class NonlinearReductor:
                 return pickle.load(solution_file)
         return [(mu, self.fom.solve(mu)) for mu in self.training_set]
 
+    def perform_single_registration(self, input_, save_intermediate_results=True,
+                                    registration_params={'sigma': 0.1, 'epsilon': 0.1,
+                                                         'iterations': 20}):
+#        v0 = self.geodesic_shooter.register(self.reference_solution, u,
+#                                                        **registration_params, return_all=False)
+        assert len(input_) == 2
+        mu, u = input_
+        result = self.geodesic_shooter.register(self.reference_solution, u,
+                                                **registration_params, return_all=True)
+
+        transformed_input = result['transformed_input']
+        v0 = result['initial_velocity_field']
+
+        if save_intermediate_results:
+            plt.matshow(u)
+            plt.savefig(f'intermediate_results/full_solution_mu_'
+                        f'{str(mu).replace(".", "_")}.png')
+            plt.close()
+            plt.matshow(transformed_input)
+            plt.savefig(f'intermediate_results/mapped_solution_mu_'
+                        f'{str(mu).replace(".", "_")}.png')
+            plt.close()
+            plot_vector_field(v0, title="Initial vector field (C2S)", interval=2)
+            plt.savefig('intermediate_results/full_vector_field_mu_'
+                        f'{str(mu).replace(".", "_")}.png')
+            plt.close()
+            norm = np.linalg.norm(u - transformed_input) / np.linalg.norm(u)
+            with open('intermediate_results/'
+                      'relative_mapping_errors.txt', 'a') as errors_file:
+                errors_file.write(f"{mu}\t{norm}\n")
+        return v0.flatten()
+
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
                                 registration_params={'sigma': 0.1, 'epsilon': 0.1,
-                                                     'iterations': 20}):
+                                                     'iterations': 20},
+                                num_workers=1):
         with self.logger.block("Computing mappings and vector fields ..."):
-            full_velocity_fields = []
-            for (mu, u) in full_solutions:
-#                v0 = self.geodesic_shooter.register(self.reference_solution, u,
-#                                                    **registration_params, return_all=False)
-                result = self.geodesic_shooter.register(self.reference_solution, u,
-                                                        **registration_params, return_all=True)
-
-                transformed_input = result['transformed_input']
-                v0 = result['initial_velocity_field']
-
-                if save_intermediate_results:
-                    plt.matshow(u)
-                    plt.savefig(f'intermediate_results/full_solution_mu_'
-                                f'{str(mu).replace(".", "_")}.png')
-                    plt.close()
-                    plt.matshow(transformed_input)
-                    plt.savefig(f'intermediate_results/mapped_solution_mu_'
-                                f'{str(mu).replace(".", "_")}.png')
-                    plt.close()
-                    plot_vector_field(v0, title="Initial vector field (C2S)", interval=2)
-                    plt.savefig('intermediate_results/full_vector_field_mu_'
-                                f'{str(mu).replace(".", "_")}.png')
-                    plt.close()
-                    norm = np.linalg.norm(u - transformed_input) / np.linalg.norm(u)
-                    with open('intermediate_results/'
-                              'relative_mapping_errors.txt', 'a') as errors_file:
-                        errors_file.write(f"{mu}\t{norm}\n")
-
-                full_velocity_fields.append(v0.flatten())
+            with multiprocessing.Pool(num_workers) as pool:
+                perform_registration = partial(self.perform_single_registration,
+                                               save_intermediate_results=save_intermediate_results,
+                                               registration_params=registration_params)
+                full_velocity_fields = pool.map(perform_registration, full_solutions)
         return full_velocity_fields
 
     def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
-               registration_params={'sigma': 0.1, 'epsilon': 0.1, 'iterations': 20},
+               registration_params={'sigma': 0.1, 'epsilon': 0.1, 'iterations': 20}, num_workers=1,
                full_solutions_file=None):
         assert isinstance(max_basis_size, int) and max_basis_size > 0
         assert isinstance(restarts, int) and restarts > 0
@@ -78,7 +89,7 @@ class NonlinearReductor:
 
         full_velocity_fields = self.register_full_solutions(full_solutions,
                                                             save_intermediate_results,
-                                                            registration_params)
+                                                            registration_params, num_workers)
 
         with self.logger.block("Reducing vector fields using POD ..."):
             full_velocity_fields = np.stack(full_velocity_fields, axis=-1)

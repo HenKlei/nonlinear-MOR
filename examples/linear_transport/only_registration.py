@@ -67,13 +67,16 @@ parameters = []
 reference_parameter = 1.
 
 gs_smoothing_params = {'alpha': 100., 'exponent': 3}
-registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 5000}
+registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 3}#5000}
 restarts = 100
+
+NUM_WORKERS = 2
 
 reductor = NonlinearReductor(fom, parameters, reference_parameter,
                              gs_smoothing_params=gs_smoothing_params)
 rom, output_dict = reductor.reduce(return_all=True, restarts=restarts,
                                    registration_params=registration_params,
+                                   num_workers=NUM_WORKERS,
                                    full_solutions_file='outputs/full_solutions')
 
 with open('outputs/output_dict_rom', 'wb') as output_file:
