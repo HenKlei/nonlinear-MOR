@@ -14,8 +14,8 @@ if __name__ == "__main__":
         reference_solution = pickle.load(input_file)
 
     # perform the registration
-    gs = geodesic_shooting.GeodesicShooting(alpha=1000., exponent=3.)
-    result = gs.register(reference_solution, full_solution, sigma=0.1, epsilon=0.01,
+    gs = geodesic_shooting.GeodesicShooting(alpha=100., exponent=3.)
+    result = gs.register(reference_solution, full_solution, sigma=0.1, epsilon=0.1,
                          iterations=5000, return_all=True)
 
     transformed_input = result['transformed_input']

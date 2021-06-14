@@ -67,8 +67,8 @@ N_train = 5
 parameters = np.linspace(0.25, 1., N_train)
 reference_parameter = 1.
 
-gs_smoothing_params = {'alpha': 6., 'exponent': 2}
-registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 10}#00}
+gs_smoothing_params = {'alpha': 100., 'exponent': 3}
+registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 5000}
 restarts = 10
 
 reductor = NonlinearReductor(fom, parameters, reference_parameter,

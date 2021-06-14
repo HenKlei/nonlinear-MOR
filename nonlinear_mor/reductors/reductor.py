@@ -1,3 +1,4 @@
+import pickle
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,17 +24,18 @@ class NonlinearReductor:
 
         self.geodesic_shooter = geodesic_shooting.GeodesicShooting(**gs_smoothing_params)
 
-    def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
-               registration_params={'sigma': 0.1, 'epsilon': 0.1, 'iterations': 20}):
-        assert isinstance(max_basis_size, int) and max_basis_size > 0
-        assert isinstance(restarts, int) and restarts > 0
+        self.logger = getLogger('nonlinear_mor.NonlinearReductor.reduce')
 
-        logger = getLogger('nonlinear_mor.NonlinearReductor.reduce')
+    def compute_full_solutions(self, full_solutions_file=None):
+        if full_solutions_file:
+            with open(full_solutions_file, 'rb') as solution_file:
+                return pickle.load(solution_file)
+        return [(mu, self.fom.solve(mu)) for mu in self.training_set]
 
-        with logger.block("Computing full solutions ..."):
-            full_solutions = [(mu, self.fom.solve(mu)) for mu in self.training_set]
-
-        with logger.block("Computing mappings and vector fields ..."):
+    def register_full_solutions(self, full_solutions, save_intermediate_results=True,
+                                registration_params={'sigma': 0.1, 'epsilon': 0.1,
+                                                     'iterations': 20}):
+        with self.logger.block("Computing mappings and vector fields ..."):
             full_velocity_fields = []
             for (mu, u) in full_solutions:
 #                v0 = self.geodesic_shooter.register(self.reference_solution, u,
@@ -63,25 +65,54 @@ class NonlinearReductor:
                         errors_file.write(f"{mu}\t{norm}\n")
 
                 full_velocity_fields.append(v0.flatten())
+        return full_velocity_fields
 
-        with logger.block("Reducing vector fields using POD ..."):
+    def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
+               registration_params={'sigma': 0.1, 'epsilon': 0.1, 'iterations': 20},
+               full_solutions_file=None):
+        assert isinstance(max_basis_size, int) and max_basis_size > 0
+        assert isinstance(restarts, int) and restarts > 0
+
+        with self.logger.block("Computing full solutions ..."):
+            full_solutions = self.compute_full_solutions(full_solutions_file)
+
+        full_velocity_fields = self.register_full_solutions(full_solutions,
+                                                            save_intermediate_results,
+                                                            registration_params)
+
+        with self.logger.block("Reducing vector fields using POD ..."):
             full_velocity_fields = np.stack(full_velocity_fields, axis=-1)
             reduced_velocity_fields = pod(full_velocity_fields, modes=max_basis_size)
 
-        logger.info("Computing reduced coefficients ...")
+        self.logger.info("Computing reduced coefficients ...")
         reduced_coefficients = full_velocity_fields.T.dot(reduced_velocity_fields)
 
-        logger.info("Approximating mapping from parameters to reduced coefficients ...")
+        self.logger.info("Approximating mapping from parameters to reduced coefficients ...")
         training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for (mu, _), coeff in
                          zip(full_solutions, reduced_coefficients)]
         validation_data = training_data[:int(0.1 * len(training_data)) + 1]
         training_data = training_data[int(0.1 * len(training_data)) + 2:]
         layers_sizes = [1, 30, 30, reduced_coefficients.shape[1]]
 
+        best_neural_network = self.multiple_restarts_training(training_data, validation_data,
+                                                              layers_sizes, restarts)
+
+        self.logger.info("Building reduced model ...")
+        rom = self.build_rom(reduced_velocity_fields, best_neural_network)
+
+        if return_all:
+            return rom, {'reduced_velocity_fields': reduced_velocity_fields,
+                         'full_velocity_fields': full_velocity_fields,
+                         'training_data': training_data,
+                         'validation_data': validation_data}
+
+        return rom
+
+    def multiple_restarts_training(self, training_data, validation_data, layers_sizes, restarts):
         best_neural_network = None
         best_loss = None
 
-        with logger.block(f"Performing {restarts} restarts of neural network training ..."):
+        with self.logger.block(f"Performing {restarts} restarts of neural network training ..."):
             for _ in range(restarts):
                 neural_network, loss = self.train_neural_network(layers_sizes, training_data,
                                                                  validation_data)
@@ -89,17 +120,9 @@ class NonlinearReductor:
                     best_neural_network = neural_network
                     best_loss = loss
 
-            logger.info(f"Trained neural network with loss of {best_loss} ...")
+            self.logger.info(f"Trained neural network with loss of {best_loss} ...")
 
-        logger.info("Building reduced model ...")
-        rom = self.build_rom(reduced_velocity_fields, best_neural_network)
-
-        if return_all:
-            return rom, {'reduced_velocity_fields': reduced_velocity_fields,
-                         'training_data': training_data,
-                         'validation_data': validation_data}
-
-        return rom
+        return best_neural_network
 
     def train_neural_network(self, layers_sizes, training_data, validation_data):
         neural_network = FullyConnectedNetwork(layers_sizes)
