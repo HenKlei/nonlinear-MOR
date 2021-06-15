@@ -71,16 +71,17 @@ registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 5000}
 restarts = 100
 
 NUM_WORKERS = 2
+MAX_BASIS_SIZE = 2
 
 reductor = NonlinearReductor(fom, parameters, reference_parameter,
                              gs_smoothing_params=gs_smoothing_params)
-rom, output_dict = reductor.reduce(return_all=True, restarts=restarts,
-                                   registration_params=registration_params,
+rom, output_dict = reductor.reduce(max_basis_size=MAX_BASIS_SIZE, return_all=True,
+                                   restarts=restarts, registration_params=registration_params,
                                    num_workers=NUM_WORKERS,
-                                   full_solutions_file='outputs/full_solutions')
+                                   full_solutions_file='outputs/full_solutions',
+                                   full_velocity_fields_file='outputs/full_velocity_fields')
 
-with open('outputs/full_velocity_fields', 'wb') as output_file:
-    pickle.dump(output_dict.pop('full_velocity_fields', None), output_file)
+output_dict.pop('full_velocity_fields', None)
 
 with open('outputs/output_dict_rom', 'wb') as output_file:
     pickle.dump(output_dict, output_file)
