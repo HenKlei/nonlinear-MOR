@@ -69,18 +69,21 @@ class NonlinearReductor:
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
                                 registration_params={'sigma': 0.1, 'epsilon': 0.1,
                                                      'iterations': 20},
-                                num_workers=1):
+                                num_workers=1, full_velocity_fields_file=None):
+        if full_velocity_fields_file:
+            with open(full_velocity_fields_file, 'rb') as velocity_fields_file:
+                return pickle.load(velocity_fields_file)
         with self.logger.block("Computing mappings and vector fields ..."):
             with multiprocessing.Pool(num_workers) as pool:
                 perform_registration = partial(self.perform_single_registration,
                                                save_intermediate_results=save_intermediate_results,
                                                registration_params=registration_params)
                 full_velocity_fields = pool.map(perform_registration, full_solutions)
-        return full_velocity_fields
+        return np.stack(full_velocity_fields, axis=-1)
 
     def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
                registration_params={'sigma': 0.1, 'epsilon': 0.1, 'iterations': 20}, num_workers=1,
-               full_solutions_file=None):
+               full_solutions_file=None, full_velocity_fields_file=None):
         assert isinstance(max_basis_size, int) and max_basis_size > 0
         assert isinstance(restarts, int) and restarts > 0
 
@@ -89,10 +92,10 @@ class NonlinearReductor:
 
         full_velocity_fields = self.register_full_solutions(full_solutions,
                                                             save_intermediate_results,
-                                                            registration_params, num_workers)
+                                                            registration_params, num_workers,
+                                                            full_velocity_fields_file)
 
         with self.logger.block("Reducing vector fields using POD ..."):
-            full_velocity_fields = np.stack(full_velocity_fields, axis=-1)
             reduced_velocity_fields = pod(full_velocity_fields, modes=max_basis_size)
 
         self.logger.info("Computing reduced coefficients ...")
