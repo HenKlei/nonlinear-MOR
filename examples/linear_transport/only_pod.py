@@ -68,18 +68,23 @@ reference_parameter = 1.
 
 gs_smoothing_params = {'alpha': 100., 'exponent': 3}
 registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 5000}
+trainer_params = {'learning_rate': 0.0001}
+training_params = {'number_of_epochs': int(1e4)}
 restarts = 100
 
 NUM_WORKERS = 2
-MAX_BASIS_SIZE = 2
+MAX_BASIS_SIZE = 1
 
 reductor = NonlinearReductor(fom, parameters, reference_parameter,
                              gs_smoothing_params=gs_smoothing_params)
 rom, output_dict = reductor.reduce(max_basis_size=MAX_BASIS_SIZE, return_all=True,
                                    restarts=restarts, registration_params=registration_params,
+                                   trainer_params=trainer_params, training_params=training_params,
                                    num_workers=NUM_WORKERS,
                                    full_solutions_file='outputs/full_solutions',
                                    full_velocity_fields_file='outputs/full_velocity_fields')
+
+print(output_dict['training_data'])
 
 output_dict.pop('full_velocity_fields', None)
 

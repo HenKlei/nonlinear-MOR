@@ -1,4 +1,5 @@
 import pickle
+import random
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,7 +12,6 @@ from geodesic_shooting.utils.visualization import plot_vector_field
 from nonlinear_mor.models import ReducedSpacetimeModel
 from nonlinear_mor.utils import pod
 from nonlinear_mor.utils.logger import getLogger
-from nonlinear_mor.utils.torch.early_stopping import SimpleEarlyStoppingScheduler
 from nonlinear_mor.utils.torch.neural_networks import FullyConnectedNetwork
 from nonlinear_mor.utils.torch.trainer import Trainer
 
@@ -37,17 +37,16 @@ class NonlinearReductor:
     def perform_single_registration(self, input_, save_intermediate_results=True,
                                     registration_params={'sigma': 0.1, 'epsilon': 0.1,
                                                          'iterations': 20}):
-#        v0 = self.geodesic_shooter.register(self.reference_solution, u,
-#                                                        **registration_params, return_all=False)
         assert len(input_) == 2
         mu, u = input_
         result = self.geodesic_shooter.register(self.reference_solution, u,
                                                 **registration_params, return_all=True)
 
-        transformed_input = result['transformed_input']
         v0 = result['initial_velocity_field']
 
         if save_intermediate_results:
+            transformed_input = result['transformed_input']
+
             plt.matshow(u)
             plt.savefig(f'intermediate_results/full_solution_mu_'
                         f'{str(mu).replace(".", "_")}.png')
@@ -64,6 +63,7 @@ class NonlinearReductor:
             with open('intermediate_results/'
                       'relative_mapping_errors.txt', 'a') as errors_file:
                 errors_file.write(f"{mu}\t{norm}\n")
+
         return v0.flatten()
 
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
@@ -82,7 +82,7 @@ class NonlinearReductor:
         return np.stack(full_velocity_fields, axis=-1)
 
     def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
-               registration_params={'sigma': 0.1, 'epsilon': 0.1, 'iterations': 20}, num_workers=1,
+               registration_params={}, trainer_params={}, training_params={}, num_workers=1,
                full_solutions_file=None, full_velocity_fields_file=None):
         assert isinstance(max_basis_size, int) and max_basis_size > 0
         assert isinstance(restarts, int) and restarts > 0
@@ -104,12 +104,19 @@ class NonlinearReductor:
         self.logger.info("Approximating mapping from parameters to reduced coefficients ...")
         training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for (mu, _), coeff in
                          zip(full_solutions, reduced_coefficients)]
+        random.shuffle(training_data)
         validation_data = training_data[:int(0.1 * len(training_data)) + 1]
         training_data = training_data[int(0.1 * len(training_data)) + 2:]
+
+        self.compute_normalization(training_data, validation_data)
+        training_data = self.normalize(training_data)
+        validation_data = self.normalize(validation_data)
+
         layers_sizes = [1, 30, 30, reduced_coefficients.shape[1]]
 
         best_neural_network = self.multiple_restarts_training(training_data, validation_data,
-                                                              layers_sizes, restarts)
+                                                              layers_sizes, restarts,
+                                                              trainer_params, training_params)
 
         self.logger.info("Building reduced model ...")
         rom = self.build_rom(reduced_velocity_fields, best_neural_network)
@@ -122,14 +129,36 @@ class NonlinearReductor:
 
         return rom
 
-    def multiple_restarts_training(self, training_data, validation_data, layers_sizes, restarts):
+    def compute_normalization(self, training_data, validation_data):
+        self.min_input = np.min([elem[0].numpy() for elem in training_data + validation_data])
+        self.max_input = np.max([elem[0].numpy() for elem in training_data + validation_data])
+        self.min_output = np.min([elem[1].numpy() for elem in training_data + validation_data])
+        self.max_output = np.max([elem[1].numpy() for elem in training_data + validation_data])
+
+    def normalize(self, data):
+        assert hasattr(self, 'min_input') and hasattr(self, 'max_input')
+        assert hasattr(self, 'min_output') and hasattr(self, 'max_output')
+        return [(self.normalize_input(elem[0]), self.normalize_output(elem[1])) for elem in data]
+
+    def normalize_input(self, data):
+        return (data - self.min_input) / (self.max_input - self.min_input)
+
+    def normalize_output(self, data):
+        return (data - self.min_output) / (self.max_output - self.min_output)
+
+    def denormalize_output(self, data):
+        return data * (self.max_output - self.min_output) + self.min_output
+
+    def multiple_restarts_training(self, training_data, validation_data, layers_sizes, restarts,
+                                   trainer_params={}, training_params={}):
         best_neural_network = None
         best_loss = None
 
         with self.logger.block(f"Performing {restarts} restarts of neural network training ..."):
             for _ in range(restarts):
                 neural_network, loss = self.train_neural_network(layers_sizes, training_data,
-                                                                 validation_data)
+                                                                 validation_data,
+                                                                 trainer_params, training_params)
                 if best_loss is None or best_loss > loss:
                     best_neural_network = neural_network
                     best_loss = loss
@@ -138,13 +167,15 @@ class NonlinearReductor:
 
         return best_neural_network
 
-    def train_neural_network(self, layers_sizes, training_data, validation_data):
+    def train_neural_network(self, layers_sizes, training_data, validation_data,
+                             trainer_params={}, training_params={}):
         neural_network = FullyConnectedNetwork(layers_sizes)
-        trainer = Trainer(neural_network, es_scheduler=SimpleEarlyStoppingScheduler)
-        best_loss, _ = trainer.train(training_data, validation_data)
+        trainer = Trainer(neural_network, **trainer_params)
+        best_loss, _ = trainer.train(training_data, validation_data, **training_params)
         return trainer.network, best_loss
 
     def build_rom(self, velocity_fields, neural_network):
         rom = ReducedSpacetimeModel(self.reference_solution, velocity_fields, neural_network,
-                                    self.geodesic_shooter)
+                                    self.geodesic_shooter, self.normalize_input,
+                                    self.denormalize_output)
         return rom

@@ -3,14 +3,22 @@ import torch
 
 class ReducedSpacetimeModel:
     def __init__(self, reference_solution, reduced_velocity_fields, neural_network,
-                 geodesic_shooter):
+                 geodesic_shooter, normalize_input, denormalize_output):
         self.reference_solution = reference_solution
         self.reduced_velocity_fields = reduced_velocity_fields
         self.neural_network = neural_network
         self.geodesic_shooter = geodesic_shooter
+        self.normalize_input = normalize_input
+        self.denormalize_output = denormalize_output
 
     def solve(self, mu):
-        reduced_coefficients = self.neural_network(torch.Tensor([mu, ])).data.numpy()
+        normalized_mu = self.normalize_input(torch.Tensor([mu, ]))
+        print(f"mu: {mu}")
+        print(f"normalized_mu: {normalized_mu}")
+        normalized_reduced_coefficients = self.neural_network(normalized_mu).data.numpy()
+        print(f"normalized_reduced_coefficients: {normalized_reduced_coefficients}")
+        reduced_coefficients = self.denormalize_output(normalized_reduced_coefficients)
+        print(f"reduced_coefficients: {reduced_coefficients}")
         initial_velocity_field = self.reduced_velocity_fields.dot(reduced_coefficients)
         initial_velocity_field = initial_velocity_field.reshape((self.reference_solution.ndim,
                                                                  *self.reference_solution.shape))

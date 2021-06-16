@@ -6,6 +6,8 @@ import torch.utils as utils
 from .dataset import CustomDataset
 from .progressbar import ProgressTraining
 
+from nonlinear_mor.utils.torch.early_stopping import SimpleEarlyStoppingScheduler
+
 
 class Trainer:
     """Class that implements a generic trainer for neural networks.
@@ -29,7 +31,7 @@ class Trainer:
     """
     def __init__(self, network, optimizer=optim.SGD, parameters_optimizer={}, learning_rate=0.001,
                  loss_function=nn.MSELoss(), lr_scheduler=None, parameters_lr_scheduler={},
-                 es_scheduler=None, parameters_es_scheduler={}):
+                 es_scheduler=SimpleEarlyStoppingScheduler, parameters_es_scheduler={}):
         self.network = network
 
         self.optimizer = optimizer(self.network.parameters(), lr=learning_rate,
