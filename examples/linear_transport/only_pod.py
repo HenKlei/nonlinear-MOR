@@ -1,6 +1,7 @@
 import pickle
 import numpy as np
-import matplotlib.pyplot as plt
+
+import time
 
 from tent_pitching import perform_tent_pitching
 from tent_pitching.grids import create_uniform_grid
@@ -10,6 +11,7 @@ from tent_pitching.discretizations import DiscontinuousGalerkin, LaxFriedrichsFl
 
 from nonlinear_mor.reductors import NonlinearReductor
 from nonlinear_mor.models import SpacetimeModel
+from nonlinear_mor.utils.io import write_errors_to_file
 
 
 GLOBAL_SPACE_GRID_SIZE = 1.
@@ -68,42 +70,41 @@ reference_parameter = 1.
 
 gs_smoothing_params = {'alpha': 100., 'exponent': 3}
 registration_params = {'sigma': 0.1, 'epsilon': 0.1, 'iterations': 5000}
-trainer_params = {'learning_rate': 0.0001}
-training_params = {'number_of_epochs': int(1e4)}
+trainer_params = {'learning_rate': 0.001}
+training_params = {'number_of_epochs': int(1e5)}
 restarts = 100
 
 NUM_WORKERS = 2
-MAX_BASIS_SIZE = 1
+MAX_BASIS_SIZE = 10
 
 reductor = NonlinearReductor(fom, parameters, reference_parameter,
                              gs_smoothing_params=gs_smoothing_params)
+start = time.perf_counter()
 rom, output_dict = reductor.reduce(max_basis_size=MAX_BASIS_SIZE, return_all=True,
                                    restarts=restarts, registration_params=registration_params,
                                    trainer_params=trainer_params, training_params=training_params,
                                    num_workers=NUM_WORKERS,
                                    full_solutions_file='outputs/full_solutions',
                                    full_velocity_fields_file='outputs/full_velocity_fields')
+time_for_reduction = time.perf_counter() - start
 
 print(output_dict['training_data'])
 
 output_dict.pop('full_velocity_fields', None)
 
+singular_values = output_dict.pop('singular_values', '')
+with open('outputs/singular_values', 'w') as output_file:
+    for s in singular_values:
+        output_file.write(str(s) + '\n')
+
+best_loss = output_dict.pop('best_loss', '')
+
 with open('outputs/output_dict_rom', 'wb') as output_file:
     pickle.dump(output_dict, output_file)
 
+pod_size = output_dict['reduced_velocity_fields'].shape[1]
+
 test_parameters = [0.5, 0.75]
-for test_parameter in test_parameters:
-    u_red = rom.solve(test_parameter)
-    plt.matshow(u_red)
-    plt.savefig(f'results/result_mu_{str(test_parameter).replace(".", "_")}.png')
-    plt.close()
-    u_full = fom.solve(test_parameter)
-    plt.matshow(u_full)
-    plt.savefig(f'results/full_solution_mu_{str(test_parameter).replace(".", "_")}.png')
-    plt.close()
-    plt.matshow(u_red - u_full)
-    plt.savefig(f'results/difference_mu_{str(test_parameter).replace(".", "_")}.png')
-    plt.close()
-    with open('results/relative_errors.txt', 'a') as errors_file:
-        errors_file.write(f"{test_parameter}\t"
-                          f"{np.linalg.norm(u_red - u_full) / np.linalg.norm(u_full)}\n")
+write_errors_to_file('results/relative_errors.txt', time_for_reduction, gs_smoothing_params,
+                     registration_params, pod_size, singular_values, restarts, trainer_params,
+                     training_params, best_loss, test_parameters, rom, fom)

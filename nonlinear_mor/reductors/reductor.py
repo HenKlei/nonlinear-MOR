@@ -74,11 +74,18 @@ class NonlinearReductor:
             with open(full_velocity_fields_file, 'rb') as velocity_fields_file:
                 return pickle.load(velocity_fields_file)
         with self.logger.block("Computing mappings and vector fields ..."):
-            with multiprocessing.Pool(num_workers) as pool:
-                perform_registration = partial(self.perform_single_registration,
-                                               save_intermediate_results=save_intermediate_results,
-                                               registration_params=registration_params)
-                full_velocity_fields = pool.map(perform_registration, full_solutions)
+            if num_workers > 1:
+                with multiprocessing.Pool(num_workers) as pool:
+                    perform_registration = partial(self.perform_single_registration,
+                                                   save_intermediate_results=save_intermediate_results,
+                                                   registration_params=registration_params)
+                    full_velocity_fields = pool.map(perform_registration, full_solutions)
+            else:
+                full_velocity_fields = []
+                for (mu, u) in full_solutions:
+                    full_velocity_fields.append(self.perform_single_registration((mu, u),
+                                                save_intermediate_results=save_intermediate_results,
+                                                registration_params=registration_params))
         return np.stack(full_velocity_fields, axis=-1)
 
     def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
@@ -96,7 +103,9 @@ class NonlinearReductor:
                                                             full_velocity_fields_file)
 
         with self.logger.block("Reducing vector fields using POD ..."):
-            reduced_velocity_fields = pod(full_velocity_fields, modes=max_basis_size)
+            reduced_velocity_fields, singular_values = pod(full_velocity_fields,
+                                                           modes=max_basis_size,
+                                                           return_singular_values=True)
 
         self.logger.info("Computing reduced coefficients ...")
         reduced_coefficients = full_velocity_fields.T.dot(reduced_velocity_fields)
@@ -114,18 +123,19 @@ class NonlinearReductor:
 
         layers_sizes = [1, 30, 30, reduced_coefficients.shape[1]]
 
-        best_neural_network = self.multiple_restarts_training(training_data, validation_data,
-                                                              layers_sizes, restarts,
-                                                              trainer_params, training_params)
+        best_neural_network, best_loss = self.multiple_restarts_training(
+            training_data, validation_data, layers_sizes, restarts, trainer_params, training_params)
 
         self.logger.info("Building reduced model ...")
         rom = self.build_rom(reduced_velocity_fields, best_neural_network)
 
         if return_all:
             return rom, {'reduced_velocity_fields': reduced_velocity_fields,
+                         'singular_values': singular_values,
                          'full_velocity_fields': full_velocity_fields,
                          'training_data': training_data,
-                         'validation_data': validation_data}
+                         'validation_data': validation_data,
+                         'best_loss': best_loss}
 
         return rom
 
@@ -165,7 +175,7 @@ class NonlinearReductor:
 
             self.logger.info(f"Trained neural network with loss of {best_loss} ...")
 
-        return best_neural_network
+        return best_neural_network, best_loss
 
     def train_neural_network(self, layers_sizes, training_data, validation_data,
                              trainer_params={}, training_params={}):
