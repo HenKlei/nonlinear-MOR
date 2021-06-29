@@ -62,7 +62,8 @@ class NonlinearReductor:
             norm = np.linalg.norm(u - transformed_input) / np.linalg.norm(u)
             with open('intermediate_results/'
                       'relative_mapping_errors.txt', 'a') as errors_file:
-                errors_file.write(f"{mu}\t{norm}\n")
+                errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\t"
+                                  f"{result['reason_registration_ended']}\n")
 
         return v0.flatten()
 
