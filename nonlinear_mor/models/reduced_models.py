@@ -13,12 +13,8 @@ class ReducedSpacetimeModel:
 
     def solve(self, mu):
         normalized_mu = self.normalize_input(torch.Tensor([mu, ]))
-        print(f"mu: {mu}")
-        print(f"normalized_mu: {normalized_mu}")
         normalized_reduced_coefficients = self.neural_network(normalized_mu).data.numpy()
-        print(f"normalized_reduced_coefficients: {normalized_reduced_coefficients}")
         reduced_coefficients = self.denormalize_output(normalized_reduced_coefficients)
-        print(f"reduced_coefficients: {reduced_coefficients}")
         initial_velocity_field = self.reduced_velocity_fields.dot(reduced_coefficients)
         initial_velocity_field = initial_velocity_field.reshape((self.reference_solution.ndim,
                                                                  *self.reference_solution.shape))
