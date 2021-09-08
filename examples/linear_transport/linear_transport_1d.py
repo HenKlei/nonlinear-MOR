@@ -64,7 +64,7 @@ grid_operator = GridOperator(space_time_grid, discretization, DGFunction, u_0_fu
 fom = SpacetimeModel(grid_operator, inverse_transformation, n_x=N_X, n_t=N_T)
 
 N_train = 5
-parameters = [0.25,]#np.linspace(0.25, 1., N_train)
+parameters = np.linspace(0.25, 1., N_train)
 reference_parameter = 1.
 
 gs_smoothing_params = {'alpha': 1000., 'exponent': 3}
