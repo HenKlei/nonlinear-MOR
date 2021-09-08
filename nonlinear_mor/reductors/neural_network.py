@@ -16,7 +16,7 @@ from nonlinear_mor.utils.torch.neural_networks import FullyConnectedNetwork
 from nonlinear_mor.utils.torch.trainer import Trainer
 
 
-class NonlinearReductor:
+class NonlinearNeuralNetworkReductor:
     def __init__(self, fom, training_set, reference_parameter,
                  gs_smoothing_params={'alpha': 1000., 'exponent': 3}):
         self.fom = fom
@@ -26,7 +26,7 @@ class NonlinearReductor:
 
         self.geodesic_shooter = geodesic_shooting.GeodesicShooting(**gs_smoothing_params)
 
-        self.logger = getLogger('nonlinear_mor.NonlinearReductor.reduce')
+        self.logger = getLogger('nonlinear_mor.NonlinearNeuralNetworkReductor.reduce')
 
     def compute_full_solutions(self, full_solutions_file=None):
         if full_solutions_file:

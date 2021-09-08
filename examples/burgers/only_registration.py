@@ -9,7 +9,7 @@ from tent_pitching.operators import GridOperator
 from tent_pitching.functions import DGFunction
 from tent_pitching.discretizations import DiscontinuousGalerkin, LaxFriedrichsFlux, RungeKutta4
 
-from nonlinear_mor.reductors import NonlinearReductor
+from nonlinear_mor.reductors.neural_network import NonlinearNeuralNetworkReductor
 from nonlinear_mor.models import SpacetimeModel
 from nonlinear_mor.utils.io import write_errors_to_file
 
@@ -75,8 +75,8 @@ restarts = 100
 
 NUM_WORKERS = 2
 
-reductor = NonlinearReductor(fom, parameters, reference_parameter,
-                             gs_smoothing_params=gs_smoothing_params)
+reductor = NonlinearNeuralNetworkReductor(fom, parameters, reference_parameter,
+                                          gs_smoothing_params=gs_smoothing_params)
 start = time.perf_counter()
 rom, output_dict = reductor.reduce(return_all=True, restarts=restarts,
                                    registration_params=registration_params,
