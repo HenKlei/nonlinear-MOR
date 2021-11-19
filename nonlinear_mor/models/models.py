@@ -57,7 +57,7 @@ class AnalyticalModel:
                              np.linspace(self.t_min, self.t_max, self.n_t))
         XY = np.stack([XX.T, YY.T], axis=-1)
 
-        with logger.block("Sampling analytical solution for mu={mu} ..."):
+        with logger.block(f"Sampling analytical solution for mu={mu} ..."):
             result = self.exact_solution(XY, mu=mu)
 
         return result

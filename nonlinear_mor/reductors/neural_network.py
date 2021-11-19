@@ -35,8 +35,7 @@ class NonlinearNeuralNetworkReductor:
         return [(mu, self.fom.solve(mu)) for mu in self.training_set]
 
     def perform_single_registration(self, input_, save_intermediate_results=True,
-                                    registration_params={'sigma': 0.1, 'epsilon': 0.1,
-                                                         'iterations': 20}):
+                                    registration_params={'sigma': 0.1, 'iterations': 20}):
         assert len(input_) == 2
         mu, u = input_
         result = self.geodesic_shooter.register(self.reference_solution, u,
@@ -55,7 +54,7 @@ class NonlinearNeuralNetworkReductor:
             plt.savefig(f'intermediate_results/mapped_solution_mu_'
                         f'{str(mu).replace(".", "_")}.png')
             plt.close()
-            plot_vector_field(v0, title="Initial vector field (C2S)", interval=2)
+            #plot_vector_field(v0, title="Initial vector field (C2S)", interval=2)
             plt.savefig('intermediate_results/full_vector_field_mu_'
                         f'{str(mu).replace(".", "_")}.png')
             plt.close()
@@ -68,8 +67,7 @@ class NonlinearNeuralNetworkReductor:
         return v0.flatten()
 
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
-                                registration_params={'sigma': 0.1, 'epsilon': 0.1,
-                                                     'iterations': 20},
+                                registration_params={'sigma': 0.1, 'iterations': 20},
                                 num_workers=1, full_velocity_fields_file=None):
         if full_velocity_fields_file:
             with open(full_velocity_fields_file, 'rb') as velocity_fields_file:
