@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
 import multiprocessing
+from copy import deepcopy
 
 import geodesic_shooting
 from geodesic_shooting.utils.visualization import plot_vector_field
@@ -35,7 +36,9 @@ class NonlinearNeuralNetworkReductor:
         return [(mu, self.fom.solve(mu)) for mu in self.training_set]
 
     def perform_single_registration(self, input_, save_intermediate_results=True,
-                                    registration_params={'sigma': 0.1, 'iterations': 20}):
+                                    registration_params={'sigma': 0.1, 'iterations': 20,
+                                                         'parameters_line_search': {'max_stepsize': 1.,
+                                                                                    'min_stepsize': 1e-4}}):
         assert len(input_) == 2
         mu, u = input_
         result = self.geodesic_shooter.register(self.reference_solution, u,
@@ -77,14 +80,14 @@ class NonlinearNeuralNetworkReductor:
                 with multiprocessing.Pool(num_workers) as pool:
                     perform_registration = partial(self.perform_single_registration,
                                                    save_intermediate_results=save_intermediate_results,
-                                                   registration_params=registration_params)
+                                                   registration_params=deepcopy(registration_params))
                     full_velocity_fields = pool.map(perform_registration, full_solutions)
             else:
                 full_velocity_fields = []
                 for (mu, u) in full_solutions:
                     full_velocity_fields.append(self.perform_single_registration((mu, u),
                                                 save_intermediate_results=save_intermediate_results,
-                                                registration_params=registration_params))
+                                                registration_params=deepcopy(registration_params)))
         return np.stack(full_velocity_fields, axis=-1)
 
     def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
