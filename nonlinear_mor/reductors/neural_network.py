@@ -82,7 +82,7 @@ class NonlinearNeuralNetworkReductor:
         with self.logger.block("Computing mappings and vector fields ..."):
             if num_workers > 1:
                 if reuse_vector_fields:
-                    self.logger.warning(f"Reusing vector fields not possible with {num_workers} workers ...")
+                    self.logger.warning(f"Reusing velocity fields not possible with {num_workers} workers ...")
                 with multiprocessing.Pool(num_workers) as pool:
                     perform_registration = partial(self.perform_single_registration,
                                                    initial_velocity_field=None,
@@ -94,6 +94,7 @@ class NonlinearNeuralNetworkReductor:
                 for i, (mu, u) in enumerate(full_solutions):
                     if reuse_vector_fields and i > 0:
                         initial_velocity_field = full_velocity_fields[-1]
+                        self.logger.info("Reusing velocity field from previous registration ...")
                     else:
                         initial_velocity_field = None
                     full_velocity_fields.append(self.perform_single_registration((mu, u),
