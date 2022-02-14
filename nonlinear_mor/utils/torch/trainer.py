@@ -29,7 +29,7 @@ class Trainer:
     parameters_es_scheduler
         Additional parameters for the early stopping scheduler.
     """
-    def __init__(self, network, optimizer=optim.SGD, parameters_optimizer={}, learning_rate=0.001,
+    def __init__(self, network, optimizer=optim.LBFGS, parameters_optimizer={}, learning_rate=1.,
                  loss_function=nn.MSELoss(), lr_scheduler=None, parameters_lr_scheduler={},
                  es_scheduler=SimpleEarlyStoppingScheduler, parameters_es_scheduler={}):
         self.network = network
@@ -96,6 +96,9 @@ class Trainer:
         print('Training of neural network:')
         print('===========================')
         print()
+
+        if type(self.optimizer) == optim.LBFGS:
+            batch_size = max(len(training_data), len(validation_data))
 
         training_data = CustomDataset(training_data)
         training_sampler = utils.data.RandomSampler(training_data)
