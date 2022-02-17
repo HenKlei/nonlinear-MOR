@@ -104,8 +104,8 @@ class NonlinearNeuralNetworkReductor:
         return np.stack(full_velocity_fields, axis=-1)
 
     def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
-               registration_params={}, trainer_params={}, training_params={}, num_workers=1,
-               full_solutions_file=None, full_velocity_fields_file=None, reuse_vector_fields=True):
+               registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20], training_params={},
+               num_workers=1, full_solutions_file=None, full_velocity_fields_file=None, reuse_vector_fields=True):
         assert isinstance(max_basis_size, int) and max_basis_size > 0
         assert isinstance(restarts, int) and restarts > 0
 
@@ -119,8 +119,10 @@ class NonlinearNeuralNetworkReductor:
                                                             reuse_vector_fields)
 
         with self.logger.block("Reducing vector fields using POD ..."):
-            reduced_velocity_fields, singular_values = pod(full_velocity_fields,
+            product_operator = self.geodesic_shooter.regularizer.cauchy_navier
+            reduced_velocity_fields, singular_values = pod(full_velocity_fields.reshape((-1, self.reference_solution.ndim, *self.reference_solution.shape)),
                                                            modes=max_basis_size,
+                                                           product_operator=product_operator,
                                                            return_singular_values=True)
 
         self.logger.info("Computing reduced coefficients ...")
@@ -137,7 +139,7 @@ class NonlinearNeuralNetworkReductor:
         training_data = self.normalize(training_data)
         validation_data = self.normalize(validation_data)
 
-        layers_sizes = [1, 100, 100, 100, reduced_coefficients.shape[1]]
+        layers_sizes = [1] + hidden_layers + [reduced_coefficients.shape[1]]
 
         best_ann, best_loss = self.multiple_restarts_training(training_data, validation_data, layers_sizes,
                                                               restarts, trainer_params, training_params)
