@@ -1,5 +1,6 @@
 from typer import Option, run
 
+from geodesic_shooting.core import ScalarFunction
 from nonlinear_mor.utils.example_scripts.analytical_solutions import run_analytical_solution_tests
 
 
@@ -8,11 +9,11 @@ def exact_solution(x, *, mu=0.25):
     s_m = mu
     s_r = 0.5 * mu
     t_intersection = 0.25 / (s_l - s_r)
-    return (2. * (x[..., 1] <= t_intersection) * (0.25 + s_l * x[..., 1] - x[..., 0] >= 0.)
-            + (2. * (x[..., 1] > t_intersection)
-                  * (0.25 + (s_l - s_m) * t_intersection + s_m * x[..., 1] - x[..., 0] >= 0.))
-            + (1. * (0.25 + s_l * x[..., 1] - x[..., 0] < 0.)
-                  * (0.5 + s_r * x[..., 1] - x[..., 0] > 0.)))
+    return ScalarFunction(data=(2. * (x[..., 1] <= t_intersection) * (0.25 + s_l * x[..., 1] - x[..., 0] >= 0.)
+                                + (2. * (x[..., 1] > t_intersection)
+                                  * (0.25 + (s_l - s_m) * t_intersection + s_m * x[..., 1] - x[..., 0] >= 0.))
+                                + (1. * (0.25 + s_l * x[..., 1] - x[..., 0] < 0.)
+                                  * (0.5 + s_r * x[..., 1] - x[..., 0] > 0.))))
 
 
 BASE_FILEPATH_RESULTS = 'results/'
@@ -21,7 +22,7 @@ BASE_FILEPATH_RESULTS = 'results/'
 def main(reference_parameter: float = Option(0.25, help='Reference parameter'),
          num_parameters: int = Option(10, help='Number of training snapshots'),
          alpha: float = Option(100., help='Alpha'),
-         exponent: int = Option(1, help='Exponent'),
+         exponent: int = Option(2, help='Exponent'),
          sigma: float = Option(0.1, help='Sigma'),
          min_stepsize: float = Option(5e-5, help='Minimum stepsize'),
          max_stepsize: float = Option(1e-1, help='Maximum stepsize'),

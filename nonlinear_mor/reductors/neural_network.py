@@ -8,7 +8,6 @@ import multiprocessing
 from copy import deepcopy
 
 import geodesic_shooting
-from geodesic_shooting.utils.visualization import plot_vector_field
 
 from nonlinear_mor.models import ReducedSpacetimeModel
 from nonlinear_mor.utils import pod
@@ -25,9 +24,7 @@ class NonlinearNeuralNetworkReductor:
         self.reference_parameter = reference_parameter
         self.reference_solution = self.fom.solve(reference_parameter)
 
-        self.geodesic_shooter = geodesic_shooting.GeodesicShooting(**gs_smoothing_params,
-                                                                   dim=self.reference_solution.ndim,
-                                                                   shape=self.reference_solution.shape)
+        self.geodesic_shooter = geodesic_shooting.GeodesicShooting(**gs_smoothing_params)
 
         self.logger = getLogger('nonlinear_mor.NonlinearNeuralNetworkReductor.reduce')
 
@@ -38,39 +35,26 @@ class NonlinearNeuralNetworkReductor:
         return [(mu, self.fom.solve(mu)) for mu in self.training_set]
 
     def perform_single_registration(self, input_, initial_velocity_field=None, save_intermediate_results=True,
-                                    registration_params={'sigma': 0.1, 'iterations': 20,
-                                                         'parameters_line_search': {'max_stepsize': 1.,
-                                                                                    'min_stepsize': 1e-4}}):
+                                    registration_params={'sigma': 0.1}):
         assert len(input_) == 2
         mu, u = input_
         result = self.geodesic_shooter.register(self.reference_solution, u,
-                                                initial_velocity_field=initial_velocity_field,
+                                                initial_vector_field=initial_velocity_field,
                                                 **registration_params, return_all=True)
 
-        v0 = result['initial_velocity_field']
+        v0 = result['initial_vector_field']
 
         if save_intermediate_results:
             transformed_input = result['transformed_input']
 
-            plt.matshow(u)
-            plt.savefig(f'intermediate_results/full_solution_mu_'
-                        f'{str(mu).replace(".", "_")}.png')
-            plt.close()
-            plt.matshow(transformed_input)
-            plt.savefig(f'intermediate_results/mapped_solution_mu_'
-                        f'{str(mu).replace(".", "_")}.png')
-            plt.close()
-            #plot_vector_field(v0, title="Initial vector field (C2S)", interval=2)
-            plt.savefig('intermediate_results/full_vector_field_mu_'
-                        f'{str(mu).replace(".", "_")}.png')
-            plt.close()
-            norm = np.linalg.norm(u - transformed_input) / np.linalg.norm(u)
-            with open('intermediate_results/'
-                      'relative_mapping_errors.txt', 'a') as errors_file:
-                errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\t"
-                                  f"{result['reason_registration_ended']}\n")
+            u.save(f'intermediate_results/full_solution_mu_{str(mu).replace(".", "_")}.png')
+            transformed_input.save(f'intermediate_results/mapped_solution_mu_{str(mu).replace(".", "_")}.png')
+            v0.save(f'intermediate_results/full_vector_field_mu_{str(mu).replace(".", "_")}.png')
+            norm = (u - transformed_input).norm / u.norm
+            with open('intermediate_results/relative_mapping_errors.txt', 'a') as errors_file:
+                errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\n")
 
-        return v0.flatten()
+        return v0
 
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
                                 registration_params={'sigma': 0.1, 'iterations': 20},
@@ -101,7 +85,7 @@ class NonlinearNeuralNetworkReductor:
                                                 initial_velocity_field=initial_velocity_field,
                                                 save_intermediate_results=save_intermediate_results,
                                                 registration_params=deepcopy(registration_params)))
-        return np.stack(full_velocity_fields, axis=-1)
+        return full_velocity_fields
 
     def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
                registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20], training_params={},
@@ -120,13 +104,13 @@ class NonlinearNeuralNetworkReductor:
 
         with self.logger.block("Reducing vector fields using POD ..."):
             product_operator = self.geodesic_shooter.regularizer.cauchy_navier
-            reduced_velocity_fields, singular_values = pod(full_velocity_fields.reshape((-1, self.reference_solution.ndim, *self.reference_solution.shape)),
+            reduced_velocity_fields, singular_values = pod(full_velocity_fields,
                                                            modes=max_basis_size,
                                                            product_operator=product_operator,
                                                            return_singular_values=True)
 
         self.logger.info("Computing reduced coefficients ...")
-        reduced_coefficients = full_velocity_fields.T.dot(reduced_velocity_fields)
+        reduced_coefficients = np.stack([a.to_numpy().flatten() for a in full_velocity_fields], axis=0).dot(reduced_velocity_fields)
 
         self.logger.info("Approximating mapping from parameters to reduced coefficients ...")
         training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for (mu, _), coeff in
