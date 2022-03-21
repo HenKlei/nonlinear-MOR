@@ -37,11 +37,12 @@ def main():
 
     gs_smoothing_params = {'alpha': 100., 'exponent': 2}
     registration_params = {'sigma': 0.1}
+    max_basis_size = 2
     restarts = 10
 
     reductor = NonlinearReductor(fom, parameters, reference_parameter,
                                  gs_smoothing_params=gs_smoothing_params)
-    rom, output_dict = reductor.reduce(return_all=True, restarts=restarts,
+    rom, output_dict = reductor.reduce(max_basis_size=max_basis_size, return_all=True, restarts=restarts,
                                        registration_params=registration_params)
 
     with open('outputs/output_dict_rom', 'wb') as output_file:
