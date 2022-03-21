@@ -18,8 +18,8 @@ class ReducedSpacetimeModel:
         normalized_reduced_coefficients = self.neural_network(normalized_mu).data.numpy()
         reduced_coefficients = self.denormalize_output(normalized_reduced_coefficients)
         initial_velocity_field = self.reduced_velocity_fields.T.dot(reduced_coefficients)
-        initial_velocity_field = VectorField(data=initial_velocity_field.reshape((*self.reference_solution.spatial_shape,
-            self.reference_solution.dim)))
+        full_shape = (*self.reference_solution.spatial_shape, self.reference_solution.dim)
+        initial_velocity_field = VectorField(data=initial_velocity_field.reshape(full_shape))
         velocity_fields = self.geodesic_shooter.integrate_forward_vector_field(initial_velocity_field)
         flow = self.geodesic_shooter.integrate_forward_flow(velocity_fields)
         mapped_solution = self.geodesic_shooter.push_forward(self.reference_solution, flow)

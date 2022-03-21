@@ -11,9 +11,9 @@ def exact_solution(x, *, mu=0.25):
     t_intersection = 0.25 / (s_l - s_r)
     return ScalarFunction(data=(2. * (x[..., 1] <= t_intersection) * (0.25 + s_l * x[..., 1] - x[..., 0] >= 0.)
                                 + (2. * (x[..., 1] > t_intersection)
-                                  * (0.25 + (s_l - s_m) * t_intersection + s_m * x[..., 1] - x[..., 0] >= 0.))
+                                   * (0.25 + (s_l - s_m) * t_intersection + s_m * x[..., 1] - x[..., 0] >= 0.))
                                 + (1. * (0.25 + s_l * x[..., 1] - x[..., 0] < 0.)
-                                  * (0.5 + s_r * x[..., 1] - x[..., 0] > 0.))))
+                                   * (0.5 + s_r * x[..., 1] - x[..., 0] > 0.))))
 
 
 BASE_FILEPATH_RESULTS = 'results/'

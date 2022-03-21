@@ -110,7 +110,8 @@ class NonlinearNeuralNetworkReductor:
                                                            return_singular_values=True)
 
         self.logger.info("Computing reduced coefficients ...")
-        reduced_coefficients = np.stack([a.to_numpy().flatten() for a in full_velocity_fields]).dot(reduced_velocity_fields.T)
+        snapshot_matrix = np.stack([a.to_numpy().flatten() for a in full_velocity_fields])
+        reduced_coefficients = snapshot_matrix.dot(reduced_velocity_fields.T)
 
         self.logger.info("Approximating mapping from parameters to reduced coefficients ...")
         training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for (mu, _), coeff in
