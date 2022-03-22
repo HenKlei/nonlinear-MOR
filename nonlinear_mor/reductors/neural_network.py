@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from functools import partial
 import multiprocessing
 from copy import deepcopy
+import pathlib
 
 import geodesic_shooting
 
@@ -28,6 +29,14 @@ class NonlinearNeuralNetworkReductor:
 
         self.logger = getLogger('nonlinear_mor.NonlinearNeuralNetworkReductor.reduce')
 
+    def write_summary(self, filepath_prefix='', registration_params={}):
+        with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
+            summary_file.write('========================================================\n')
+            summary_file.write('FOM: ' + str(self.fom) + '\n')
+            summary_file.write('Reductor: NonlinearNeuralNetworkReductor\n')
+            summary_file.write('Geodesic Shooting: ' + str(self.geodesic_shooter) + '\n')
+            summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
+
     def compute_full_solutions(self, full_solutions_file=None):
         if full_solutions_file:
             with open(full_solutions_file, 'rb') as solution_file:
@@ -35,7 +44,7 @@ class NonlinearNeuralNetworkReductor:
         return [(mu, self.fom.solve(mu)) for mu in self.training_set]
 
     def perform_single_registration(self, input_, initial_velocity_field=None, save_intermediate_results=True,
-                                    registration_params={'sigma': 0.1}):
+                                    registration_params={'sigma': 0.1}, filepath_prefix=''):
         assert len(input_) == 2
         mu, u = input_
         result = self.geodesic_shooter.register(self.reference_solution, u,
@@ -45,13 +54,15 @@ class NonlinearNeuralNetworkReductor:
         v0 = result['initial_vector_field']
 
         if save_intermediate_results:
+            filepath = filepath_prefix + '/intermediate_results'
+            pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
             transformed_input = result['transformed_input']
 
-            u.save(f'intermediate_results/full_solution_mu_{str(mu).replace(".", "_")}.png')
-            transformed_input.save(f'intermediate_results/mapped_solution_mu_{str(mu).replace(".", "_")}.png')
-            v0.save(f'intermediate_results/full_vector_field_mu_{str(mu).replace(".", "_")}.png')
+            u.save(f'{filepath}/full_solution_mu_{str(mu).replace(".", "_")}.png')
+            transformed_input.save(f'{filepath}/mapped_solution_mu_{str(mu).replace(".", "_")}.png')
+            v0.save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}.png')
             norm = (u - transformed_input).norm / u.norm
-            with open('intermediate_results/relative_mapping_errors.txt', 'a') as errors_file:
+            with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
                 errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\n")
 
         return v0
@@ -59,7 +70,7 @@ class NonlinearNeuralNetworkReductor:
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
                                 registration_params={'sigma': 0.1, 'iterations': 20},
                                 num_workers=1, full_velocity_fields_file=None,
-                                reuse_vector_fields=True):
+                                reuse_vector_fields=True, filepath_prefix=''):
         if full_velocity_fields_file:
             with open(full_velocity_fields_file, 'rb') as velocity_fields_file:
                 return pickle.load(velocity_fields_file)
@@ -71,7 +82,8 @@ class NonlinearNeuralNetworkReductor:
                     perform_registration = partial(self.perform_single_registration,
                                                    initial_velocity_field=None,
                                                    save_intermediate_results=save_intermediate_results,
-                                                   registration_params=deepcopy(registration_params))
+                                                   registration_params=deepcopy(registration_params),
+                                                   filepath_prefix=filepath_prefix)
                     full_velocity_fields = pool.map(perform_registration, full_solutions)
             else:
                 full_velocity_fields = []
@@ -84,12 +96,14 @@ class NonlinearNeuralNetworkReductor:
                     full_velocity_fields.append(self.perform_single_registration((mu, u),
                                                 initial_velocity_field=initial_velocity_field,
                                                 save_intermediate_results=save_intermediate_results,
-                                                registration_params=deepcopy(registration_params)))
+                                                registration_params=deepcopy(registration_params),
+                                                filepath_prefix=filepath_prefix))
         return full_velocity_fields
 
     def reduce(self, max_basis_size=1, return_all=True, restarts=10, save_intermediate_results=True,
                registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20], training_params={},
-               num_workers=1, full_solutions_file=None, full_velocity_fields_file=None, reuse_vector_fields=True):
+               num_workers=1, full_solutions_file=None, full_velocity_fields_file=None, reuse_vector_fields=True,
+               filepath_prefix=''):
         assert isinstance(max_basis_size, int) and max_basis_size > 0
         assert isinstance(restarts, int) and restarts > 0
 
@@ -100,7 +114,8 @@ class NonlinearNeuralNetworkReductor:
                                                             save_intermediate_results,
                                                             registration_params, num_workers,
                                                             full_velocity_fields_file,
-                                                            reuse_vector_fields)
+                                                            reuse_vector_fields,
+                                                            filepath_prefix)
 
         with self.logger.block("Reducing vector fields using POD ..."):
             product_operator = self.geodesic_shooter.regularizer.cauchy_navier
@@ -108,6 +123,14 @@ class NonlinearNeuralNetworkReductor:
                                                            modes=max_basis_size,
                                                            product_operator=product_operator,
                                                            return_singular_values=True)
+
+        if save_intermediate_results:
+            filepath = filepath_prefix + '/intermediate_results'
+            pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
+            with open(f'{filepath}/singular_values.txt', 'a') as singular_values_file:
+                for val in singular_values:
+                    singular_values_file.write(f"{val}\n")
+
 
         self.logger.info("Computing reduced coefficients ...")
         snapshot_matrix = np.stack([a.to_numpy().flatten() for a in full_velocity_fields])
