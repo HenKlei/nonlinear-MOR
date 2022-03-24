@@ -9,8 +9,8 @@ from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor as NonlinearR
 from nonlinear_mor.models import AnalyticalModel
 
 
-N_X = 10
-N_T = 10
+N_X = 100
+N_T = 100
 
 
 def exact_solution(x, *, mu=0.25):
@@ -32,14 +32,14 @@ def create_fom():
 def main():
     fom = create_fom()
 
-    N_train = 3
+    N_train = 50
     parameters = np.linspace(0.25, 1.5, N_train)
     reference_parameter = 0.25
 
     gs_smoothing_params = {'alpha': 100., 'exponent': 2}
     registration_params = {'sigma': 0.1}
     max_basis_size = 2
-    restarts = 10
+    restarts = 20
 
     import time
     timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -58,7 +58,7 @@ def main():
 
     results_filepath = f'{filepath_prefix}/results'
     pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)
-    test_parameters = [0.5, 0.75]
+    test_parameters = [0.5, 0.75, 1., 1.25]
     for test_parameter in test_parameters:
         u_red = rom.solve(test_parameter)
         u_red.save(f'{results_filepath}/result_mu_{str(test_parameter).replace(".", "_")}.png')

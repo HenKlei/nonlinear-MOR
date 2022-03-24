@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from geodesic_shooting.utils.visualization import plot_vector_field
-
 from nonlinear_mor.utils.torch.early_stopping import SimpleEarlyStoppingScheduler
 from nonlinear_mor.utils.torch.neural_networks import FullyConnectedNetwork
 from nonlinear_mor.utils.torch.trainer import Trainer
@@ -28,17 +26,22 @@ def main():
     test_parameters = [0.5, 0.75]
     for test_parameter in test_parameters:
         u_red = rom.solve(test_parameter)
+        """
+        u_red.save()
         plt.matshow(u_red)
         plt.savefig(f'results/result_mu_{str(test_parameter).replace(".", "_")}.png')
         plt.close()
+        """
         u_full = fom.solve(test_parameter)
+        """
         plt.matshow(u_full)
         plt.savefig(f'results/full_solution_mu_{str(test_parameter).replace(".", "_")}.png')
         plt.close()
         plt.matshow(u_red - u_full)
         plt.savefig(f'results/difference_mu_{str(test_parameter).replace(".", "_")}.png')
         plt.close()
-        relative_error = np.linalg.norm(u_red - u_full) / np.linalg.norm(u_full)
+        """
+        relative_error = (u_red - u_full).norm / u_full.norm
         print(f"Parameter: {test_parameter}; Relative error: {relative_error}")
         with open('results/relative_errors.txt', 'a') as errors_file:
             errors_file.write(f"{test_parameter}\t"
