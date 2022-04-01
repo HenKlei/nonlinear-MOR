@@ -9,6 +9,7 @@ from copy import deepcopy
 import pathlib
 
 import geodesic_shooting
+from geodesic_shooting.core import VectorField
 
 from nonlinear_mor.models import ReducedSpacetimeModel
 from nonlinear_mor.utils import pod
@@ -124,6 +125,18 @@ class NonlinearNeuralNetworkReductor:
                                                            product_operator=product_operator,
                                                            return_singular_values=True)
 
+        for i, v in enumerate(full_velocity_fields):
+            print(f"Vector field nr. {i}:")
+            print(f"Parameter: {self.training_set[i]}")
+            print(f"V-norm: {np.sqrt(product_operator(v).to_numpy().flatten().dot(v.to_numpy().flatten()))}")
+            print(f"l2-norm: {v.norm}")
+
+        norms = []
+        for i, v in enumerate(reduced_velocity_fields):
+            v_norm = np.sqrt(product_operator(VectorField(data=v.reshape(full_velocity_fields[0].full_shape))).to_numpy().flatten().dot(v.flatten()))
+            norms.append(v_norm)
+            reduced_velocity_fields[i] = v / v_norm
+
         if save_intermediate_results:
             filepath = filepath_prefix + '/intermediate_results'
             pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
@@ -133,8 +146,14 @@ class NonlinearNeuralNetworkReductor:
 
 
         self.logger.info("Computing reduced coefficients ...")
-        snapshot_matrix = np.stack([a.to_numpy().flatten() for a in full_velocity_fields])
-        reduced_coefficients = snapshot_matrix.dot(reduced_velocity_fields.T)
+        snapshot_matrix = np.stack([VectorField(data=a.reshape(full_velocity_fields[0].full_shape)).to_numpy().flatten() for a in reduced_velocity_fields])
+        prod_reduced_velocity_fields = np.stack([product_operator(a).to_numpy().flatten() for a in full_velocity_fields])
+        test = product_operator(VectorField(data=reduced_velocity_fields[1].reshape(full_velocity_fields[0].full_shape))).to_numpy().flatten()
+        print(snapshot_matrix.dot(test))
+        reduced_coefficients = snapshot_matrix.dot(prod_reduced_velocity_fields.T).T
+        assert reduced_coefficients.shape == (len(self.training_set), len(reduced_velocity_fields))
+        print("Reduced coefficients")
+        print(reduced_coefficients)
 
         self.logger.info("Approximating mapping from parameters to reduced coefficients ...")
         training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for (mu, _), coeff in
@@ -151,6 +170,10 @@ class NonlinearNeuralNetworkReductor:
 
         best_ann, best_loss = self.multiple_restarts_training(training_data, validation_data, layers_sizes,
                                                               restarts, trainer_params, training_params)
+
+        for i, v in enumerate(reduced_velocity_fields):
+            print(norms[i])
+            reduced_velocity_fields[i] = v * norms[i]
 
         self.logger.info("Building reduced model ...")
         rom = self.build_rom(reduced_velocity_fields, best_ann)
