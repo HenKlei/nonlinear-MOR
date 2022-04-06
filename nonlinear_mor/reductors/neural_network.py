@@ -35,7 +35,10 @@ class NonlinearNeuralNetworkReductor:
             summary_file.write('========================================================\n')
             summary_file.write('FOM: ' + str(self.fom) + '\n')
             summary_file.write('Reductor: NonlinearNeuralNetworkReductor\n')
-            summary_file.write('Geodesic Shooting: ' + str(self.geodesic_shooter) + '\n')
+            summary_file.write('Geodesic Shooting:\n')
+            summary_file.write('------------------\n')
+            summary_file.write(str(self.geodesic_shooter) + '\n')
+            summary_file.write('------------------\n')
             summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
 
     def compute_full_solutions(self, full_solutions_file=None):
