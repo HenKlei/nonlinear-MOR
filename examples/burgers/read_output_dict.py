@@ -9,20 +9,25 @@ from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor as NonlinearR
 
 
 def main():
-    restarts = 1
+    restarts = 10
 
     from exact_solutions_burgers_1d import create_fom
-    fom = create_fom()
+    fom = create_fom(100, 100)
 
     N_train = 50
-    training_set = np.linspace(0.25, 1., N_train)
+    training_set = np.linspace(0.25, 1.5, N_train)
     reference_parameter = 0.25
 
-    max_basis_size = 15
+    max_basis_size = 10
 
-    filepath_prefix = 'tmp_results'
+    filepath_prefix = 'siamuq_results'
 
-    reductor = NonlinearReductor(fom, training_set, reference_parameter)
+    alpha = 100.
+    exponent = 2
+    gs_smoothing_params = {'alpha': alpha, 'exponent': exponent}
+
+    reductor = NonlinearReductor(fom, training_set, reference_parameter,
+                                 gs_smoothing_params=gs_smoothing_params)
     rom, output_dict = reductor.reduce(max_basis_size=max_basis_size, return_all=True, restarts=restarts,
                                        full_velocity_fields_file=f'{filepath_prefix}/outputs/full_velocity_fields',
                                        filepath_prefix=filepath_prefix)

@@ -29,9 +29,9 @@ class ReducedSpacetimeModel:
             filepath_tex = filepath_prefix + "/figures_tex"
             pathlib.Path(filepath_pdf).mkdir(parents=True, exist_ok=True)
             pathlib.Path(filepath_tex).mkdir(parents=True, exist_ok=True)
-            initial_velocity_field.plot(title=f"Initial vector field for $\mu={mu}$", scale=1)
-            plt.savefig(f"{filepath_pdf}/initial_vector_field_mu_{str(mu).replace('.', '_')}.pdf")
-            tikzplotlib.save(f"{filepath_tex}/initial_vector_field_mu_{str(mu).replace('.', '_')}.tex")
+            initial_velocity_field.plot(title=f"Initial vector field for $\mu={mu}$", scale=1, interval=3)
+            initial_velocity_field.save_tikz(f"{filepath_tex}/initial_vector_field_mu_{str(mu).replace('.', '_')}.tex",
+                                             title=f"Initial vector field for $\mu={mu}$", interval=3, scale=2)
         print(f"Reduced coefficients: {reduced_coefficients}")
         product_operator = self.geodesic_shooter.regularizer.cauchy_navier
         print(f"V-norm: {np.sqrt(product_operator(initial_velocity_field).to_numpy().flatten().dot(initial_velocity_field.to_numpy().flatten()))}")

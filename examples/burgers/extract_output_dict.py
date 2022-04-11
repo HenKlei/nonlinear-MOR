@@ -1,6 +1,6 @@
 import pickle
 
-filepath_prefix = 'tmp_results'
+filepath_prefix = 'siamuq_results'
 
 with open(filepath_prefix + '/outputs/output_dict_rom', 'rb') as output_file:
     output_dict = pickle.load(output_file)
