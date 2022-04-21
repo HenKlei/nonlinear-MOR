@@ -35,13 +35,14 @@ def main():
     test_parameters = [0.5, 0.75, 1., 1.25]
     for test_parameter in test_parameters:
         u_full = fom.solve(test_parameter)
-        u_full.plot(f"Full solution $u_\mu$ for $\mu={test_parameter}$")
+        u_full.plot(f"Full solution $u_\\mu$ for $\\mu={test_parameter}$")
         tikzplotlib.save(f"{filepath_prefix}/figures_tex/full_solution_mu_{str(test_parameter).replace('.', '_')}.tex")
         u_red = rom.solve(test_parameter, filepath_prefix=filepath_prefix)
-        u_red.plot("Reduced solution $u_\mu^\mathrm{red}$ for " + f"$\mu={test_parameter}$")
-        tikzplotlib.save(f"{filepath_prefix}/figures_tex/reduced_solution_mu_{str(test_parameter).replace('.', '_')}.tex")
+        u_red.plot("Reduced solution $u_\\mu^\\mathrm{red}$ for " + f"$\\mu={test_parameter}$")
+        tikzplotlib.save(f"{filepath_prefix}/figures_tex/"
+                         f"reduced_solution_mu_{str(test_parameter).replace('.', '_')}.tex")
         relative_error = (u_red - u_full).norm / u_full.norm
-        (u_red - u_full).plot("Difference $u_\mu^\mathrm{red}-u_\mu$ for " + f"$\mu={test_parameter}$")
+        (u_red - u_full).plot("Difference $u_\\mu^\\mathrm{red}-u_\\mu$ for " + f"$\\mu={test_parameter}$")
         tikzplotlib.save(f"{filepath_prefix}/figures_tex/difference_mu_{str(test_parameter).replace('.', '_')}.tex")
         plt.show()
         print(f"Parameter: {test_parameter}; Relative error: {relative_error}")
