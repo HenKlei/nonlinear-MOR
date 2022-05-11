@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 
 dependencies = [
     'numpy',
-    'geodesic_shooting @ git+git://github.com/HenKlei/geodesic-shooting.git',
-    'tent_pitching @ git+git://github.com/HenKlei/tent-pitching.git',
+    'geodesic_shooting @ git+https://github.com/HenKlei/geodesic-shooting.git',
+    'tent_pitching @ git+https://github.com/HenKlei/tent-pitching.git',
 ]
 
 setup(
