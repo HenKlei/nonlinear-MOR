@@ -36,7 +36,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
          max_basis_size: int = Option(10, help='Maximum dimension of reduced basis'),
          restarts: int = Option(10, help='Maximum number of training restarts')):
 
-    fom = create_fom(exact_solution, N_X, N_T)
+    fom = create_fom(N_X, N_T)
 
     parameters = np.linspace(0.25, 1.5, N_train)
 
