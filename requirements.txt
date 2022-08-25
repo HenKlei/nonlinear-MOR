@@ -1,4 +1,4 @@
-numpy
-scipy
+numpy==1.23.2
+scipy==1.8.0
 git+https://github.com/HenKlei/geodesic-shooting.git
 git+https://github.com/HenKlei/tent-pitching.git
