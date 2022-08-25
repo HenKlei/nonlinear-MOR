@@ -19,9 +19,11 @@ def pod(A, modes=10, product_operator=None, return_singular_values=False):
         else:
             return np.real(V)
     else:  # assuming L2-scalar product as default if no `product_operator` is provided
+        A = np.stack([a.to_numpy().flatten() for a in A]).T
         assert A.ndim == 2
         U, S, _ = np.linalg.svd(A, full_matrices=False)
+        U = U.T
         if return_singular_values:
-            return U[:, :min(modes, U.shape[1])], S
+            return U[:min(modes, U.shape[1])], S
         else:
-            return U[:, :min(modes, U.shape[1])]
+            return U[:min(modes, U.shape[1])]
