@@ -1,3 +1,4 @@
+from typer import Argument, Option, run
 import numpy as np
 import matplotlib.pyplot as plt
 import tikzplotlib
@@ -8,7 +9,9 @@ from nonlinear_mor.utils.torch.trainer import Trainer
 from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor as NonlinearReductor
 
 
-def main():
+def main(filepath_prefix: str = Argument(..., help='Prefix of the filepath to load the output dictionary from ' +
+                                                   'and write the velocity fields file to.'),
+         max_basis_size: int = Option(15, help='Maximum size of the velocity field reduced basis.')):
     restarts = 10
 
     from exact_solutions_burgers_1d import create_fom
@@ -17,10 +20,6 @@ def main():
     N_train = 50
     training_set = np.linspace(0.25, 1.5, N_train)
     reference_parameter = 0.25
-
-    max_basis_size = 10
-
-    filepath_prefix = 'siamuq_results'
 
     alpha = 100.
     exponent = 2
@@ -51,4 +50,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    run(main)
