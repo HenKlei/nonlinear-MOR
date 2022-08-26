@@ -37,7 +37,7 @@ def get_intersection_points(mu=0.25):
         x_boundary_intersection = mu + 0.375
         t_boundary_intersection = 1.
     return np.array([[x_central_intersection, t_central_intersection],
-                     [x_boundary_intersection, t_boundary_intersection],#])
+                     [x_boundary_intersection, t_boundary_intersection],
                      [x_central_intersection + 0.125 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.125 * (t_boundary_intersection - t_central_intersection)],
                      [x_central_intersection + 0.25 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.25 * (t_boundary_intersection - t_central_intersection)],
                      [x_central_intersection + 0.375 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.375 * (t_boundary_intersection - t_central_intersection)],
@@ -57,19 +57,36 @@ def get_intersection_points(mu=0.25):
 
 def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
          N_T: int = Option(100, help='Number of pixels in time-direction'),
-         N_train: int = Option(10, help='Number of training parameters'),
          reference_parameter: float = Option(0.625, help='Reference parameter'),
-         sigma: float = Option(0.1, help='Sigma')):
+         sigma: float = Option(0.1, help='Sigma'),
+         kernel_sigma: float = Option(1., help='Sigma for kernel')):
     fom = create_fom(N_X, N_T)
     u_ref = fom.solve(reference_parameter)
     reference_landmarks = get_intersection_points(mu=reference_parameter)
 
     parameters = [0.75, 1., 1.25, 1.5]
 
-    kwargs_kernel = {"sigma": 5.}
+    kwargs_kernel = {"sigma": kernel_sigma}
     gs = geodesic_shooting.LandmarkShooting(kwargs_kernel=kwargs_kernel, sampler_options={'order': 1})
     mins = np.zeros(2)
     maxs = np.ones(2)
+
+    import time
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    filepath_prefix = f'results_landmarks_nx_{N_X}_nt_{N_T}_{timestr}'
+
+    import pathlib
+    results_filepath = f'{filepath_prefix}/results'
+    pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)
+    with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
+        summary_file.write('========================================================\n')
+        summary_file.write('FOM: ' + str(fom) + '\n')
+        summary_file.write('------------------\n')
+        summary_file.write('Reference parameter: ' + str(reference_parameter) + '\n')
+        summary_file.write('------------------\n')
+        summary_file.write('Sigma in landmark shooting: ' + str(sigma) + '\n')
+        summary_file.write('------------------\n')
+        summary_file.write('Sigma of kernel: ' + str(kernel_sigma) + '\n')
 
     results = []
 
@@ -86,18 +103,18 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
             dist /= registered_landmarks.shape[0]
             return dist
         print(f"Norm of difference: {compute_average_distance(target_landmarks, registered_landmarks)}")
+
         initial_momenta = result['initial_momenta']
         spatial_shape = (N_X, N_T)
         flow = gs.compute_time_evolution_of_diffeomorphisms(initial_momenta, reference_landmarks,
                                                             mins=mins, maxs=maxs, spatial_shape=spatial_shape)
-#        flow.plot("Flow")
         u = fom.solve(mu)
         fig = plt.figure()
         axis = fig.add_subplot(1, 1, 1)
         axis, vals = u.plot("Solution", axis=axis)
         fig.colorbar(vals, ax=axis)
         plot_landmark_matchings(reference_landmarks, target_landmarks, registered_landmarks, axis=axis)
-        fig.savefig(f"results_landmark_matching/solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
+        fig.savefig(f"{results_filepath}/solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
         plt.close(fig)
 
         u_ref_transformed = u_ref.push_forward(flow)
@@ -106,7 +123,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
         axis, vals = u_ref_transformed.plot("Transformed reference solution", axis=axis)
         fig.colorbar(vals, ax=axis)
         plot_landmark_matchings(reference_landmarks, target_landmarks, registered_landmarks, axis=axis)
-        fig.savefig(f"results_landmark_matching/transformed_reference_solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
+        fig.savefig(f"{results_filepath}/transformed_reference_solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
         plt.close(fig)
 
         fig = plt.figure()
@@ -114,7 +131,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
         axis, vals = u_ref.plot("Reference solution", axis=axis)
         fig.colorbar(vals, ax=axis)
         plot_landmark_matchings(reference_landmarks, target_landmarks, registered_landmarks, axis=axis)
-        fig.savefig(f"results_landmark_matching/reference_solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
+        fig.savefig(f"{results_filepath}/reference_solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
         plt.close(fig)
 
         fig = plt.figure()
@@ -122,31 +139,18 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
         axis, vals = (u - u_ref_transformed).plot("Difference", axis=axis)
         fig.colorbar(vals, ax=axis)
         plot_landmark_matchings(reference_landmarks, target_landmarks, registered_landmarks, axis=axis)
-        fig.savefig(f"results_landmark_matching/difference_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
+        fig.savefig(f"{results_filepath}/difference_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
         plt.close(fig)
 
-        vf = gs.get_vector_field(initial_momenta, reference_landmarks)
-        vf.plot(interval=5, scale=1.)
-        time_evolution_momenta = result['time_evolution_momenta']
-        time_evolution_positions = result['time_evolution_positions']
-        plot_landmark_trajectories(time_evolution_momenta, time_evolution_positions,
-                                   min_x=mins[0], max_x=maxs[0], min_y=mins[1], max_y=maxs[1])
-        flow = gs.compute_time_evolution_of_diffeomorphisms(initial_momenta, reference_landmarks,
-                                                            mins=mins, maxs=maxs, spatial_shape=spatial_shape)
-        flow.plot("Flow")
-        plt.show()
-
-        u.plot(f"Full solution for mu={mu}")
-        u_ref_transformed.plot(f"Transformed reference solution for mu={mu}")
-        (u - u_ref_transformed).plot(f"Difference for mu={mu}")
-        plt.show()
+        u.save(f"{results_filepath}/solution_mu_{str(mu).replace('.', '_')}.png")
+        u_ref_transformed.save(f"{results_filepath}/transformed_reference_solution_mu_{str(mu).replace('.', '_')}.png")
+        (u - u_ref_transformed).save(f"{results_filepath}/difference_mu_{str(mu).replace('.', '_')}.png")
 
         rel_error = (u_ref_transformed - u).norm / u.norm
         print(f"Relative error for mu={mu}: {rel_error}")
         results.append((mu, rel_error))
-
-    for mu, err in results:
-        print(f"Parameter: {mu}; relative error: {err}")
+        with open(f'{results_filepath}/relative_errors.txt', 'a') as errors_file:
+            errors_file.write(f"{mu}\t{rel_error}\n")
 
 
 if __name__ == "__main__":
