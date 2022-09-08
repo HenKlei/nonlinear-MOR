@@ -7,6 +7,7 @@ from geodesic_shooting.core import ScalarFunction
 from geodesic_shooting.utils.visualization import plot_landmark_matchings
 
 from nonlinear_mor.models import AnalyticalModel
+from nonlinear_mor.utils.versioning import get_git_hash, get_version
 
 
 def exact_solution(x, *, mu=0.25):
@@ -84,23 +85,20 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     timestr = time.strftime("%Y%m%d-%H%M%S")
     filepath_prefix = f'results_landmarks_nx_{N_X}_nt_{N_T}_{timestr}'
 
-    try:
-        import git
-        repo = git.Repo(search_parent_directories=True)
-        sha = repo.head.object.hexsha
-    except (ModuleNotFoundError, git.exc.InvalidGitRepositoryError):
-        sha = "No Git repository found."
-
     import pathlib
     results_filepath = f'{filepath_prefix}/results'
     pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)
     with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
         summary_file.write('========================================================\n')
-        summary_file.write('Git hash: ' + str(sha) + '\n')
+        summary_file.write('Git hash: ' + get_git_hash() + '\n')
         summary_file.write('========================================================\n')
         summary_file.write('FOM: ' + str(fom) + '\n')
         summary_file.write('------------------\n')
         summary_file.write('Reference parameter: ' + str(reference_parameter) + '\n')
+        summary_file.write('------------------\n')
+        summary_file.write('Geodesic Shooting:\n')
+        summary_file.write('------------------\n')
+        summary_file.write('Version: ' + get_version(geodesic_shooting) + '\n')
         summary_file.write('------------------\n')
         summary_file.write('Sigma in landmark shooting: ' + str(sigma) + '\n')
         summary_file.write('------------------\n')
