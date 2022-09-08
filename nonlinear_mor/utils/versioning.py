@@ -2,6 +2,12 @@ from nonlinear_mor.utils.logger import getLogger
 
 
 def get_git_hash():
+    """Get the current Git hash of this package.
+
+    Returns
+    -------
+    Git hash, if available.
+    """
     logger = getLogger('nonlinear_mor.versioning.get_git_hash')
 
     try:
@@ -16,6 +22,12 @@ def get_git_hash():
 
 
 def get_version(package):
+    """Get the current version of the provided package.
+
+    Returns
+    -------
+    Package version, if available.
+    """
     logger = getLogger('nonlinear_mor.versioning.get_version')
 
     try:
