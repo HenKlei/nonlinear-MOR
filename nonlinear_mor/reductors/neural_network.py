@@ -16,6 +16,7 @@ from nonlinear_mor.utils import pod
 from nonlinear_mor.utils.logger import getLogger
 from nonlinear_mor.utils.torch.neural_networks import FullyConnectedNetwork
 from nonlinear_mor.utils.torch.trainer import Trainer
+from nonlinear_mor.utils.versioning import get_git_hash, get_version
 
 
 class NonlinearNeuralNetworkReductor:
@@ -33,10 +34,13 @@ class NonlinearNeuralNetworkReductor:
     def write_summary(self, filepath_prefix='', registration_params={}):
         with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
             summary_file.write('========================================================\n')
+            summary_file.write('Git hash: ' + get_git_hash() + '\n')
+            summary_file.write('========================================================\n')
             summary_file.write('FOM: ' + str(self.fom) + '\n')
             summary_file.write('Reductor: NonlinearNeuralNetworkReductor\n')
             summary_file.write('Geodesic Shooting:\n')
             summary_file.write('------------------\n')
+            summary_file.write('Version: ' + get_version(geodesic_shooting) + '\n')
             summary_file.write(str(self.geodesic_shooter) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
