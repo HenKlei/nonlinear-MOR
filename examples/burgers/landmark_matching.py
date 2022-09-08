@@ -4,10 +4,7 @@ import matplotlib.pyplot as plt
 
 import geodesic_shooting
 from geodesic_shooting.core import ScalarFunction
-from geodesic_shooting.utils.visualization import (animate_landmark_trajectories,
-                                                   plot_initial_momenta_and_landmarks,
-                                                   plot_landmark_trajectories,
-                                                   plot_landmark_matchings, animate_warpgrids)
+from geodesic_shooting.utils.visualization import plot_landmark_matchings
 
 from nonlinear_mor.models import AnalyticalModel
 
@@ -39,13 +36,20 @@ def get_landmarks(mu=0.25, all_landmarks=True):
     if all_landmarks:
         return np.array([[x_central_intersection, t_central_intersection],
                          [x_boundary_intersection, t_boundary_intersection],
-                         [x_central_intersection + 0.125 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.125 * (t_boundary_intersection - t_central_intersection)],
-                         [x_central_intersection + 0.25 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.25 * (t_boundary_intersection - t_central_intersection)],
-                         [x_central_intersection + 0.375 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.375 * (t_boundary_intersection - t_central_intersection)],
-                         [x_central_intersection + 0.5 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.5 * (t_boundary_intersection - t_central_intersection)],
-                         [x_central_intersection + 0.625 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.625 * (t_boundary_intersection - t_central_intersection)],
-                         [x_central_intersection + 0.75 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.75 * (t_boundary_intersection - t_central_intersection)],
-                         [x_central_intersection + 0.875 * (x_boundary_intersection - x_central_intersection), t_central_intersection + 0.875 * (t_boundary_intersection - t_central_intersection)],
+                         [x_central_intersection + 0.125 * (x_boundary_intersection - x_central_intersection),
+                          t_central_intersection + 0.125 * (t_boundary_intersection - t_central_intersection)],
+                         [x_central_intersection + 0.25 * (x_boundary_intersection - x_central_intersection),
+                          t_central_intersection + 0.25 * (t_boundary_intersection - t_central_intersection)],
+                         [x_central_intersection + 0.375 * (x_boundary_intersection - x_central_intersection),
+                          t_central_intersection + 0.375 * (t_boundary_intersection - t_central_intersection)],
+                         [x_central_intersection + 0.5 * (x_boundary_intersection - x_central_intersection),
+                          t_central_intersection + 0.5 * (t_boundary_intersection - t_central_intersection)],
+                         [x_central_intersection + 0.625 * (x_boundary_intersection - x_central_intersection),
+                          t_central_intersection + 0.625 * (t_boundary_intersection - t_central_intersection)],
+                         [x_central_intersection + 0.75 * (x_boundary_intersection - x_central_intersection),
+                          t_central_intersection + 0.75 * (t_boundary_intersection - t_central_intersection)],
+                         [x_central_intersection + 0.875 * (x_boundary_intersection - x_central_intersection),
+                          t_central_intersection + 0.875 * (t_boundary_intersection - t_central_intersection)],
                          [0.25, 0.],
                          [0.25 + 0.25 * (x_central_intersection - 0.25), 0.25 * t_central_intersection],
                          [0.25 + 0.5 * (x_central_intersection - 0.25), 0.5 * t_central_intersection],
@@ -80,11 +84,11 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     timestr = time.strftime("%Y%m%d-%H%M%S")
     filepath_prefix = f'results_landmarks_nx_{N_X}_nt_{N_T}_{timestr}'
 
-    import git
-    repo = git.Repo(search_parent_directories=True)
     try:
+        import git
+        repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-    except:
+    except (ModuleNotFoundError, git.exc.InvalidGitRepositoryError):
         sha = "No Git repository found."
 
     import pathlib
@@ -103,8 +107,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
         summary_file.write('Sigma of kernel: ' + str(kernel_sigma) + '\n')
         summary_file.write('------------------\n')
         summary_file.write('Reference landmarks (' + str(reference_landmarks.shape[0]) + ' in total):\n')
-        for l in reference_landmarks:
-            summary_file.write(str(l) + '\n')
+        for reference_landmark in reference_landmarks:
+            summary_file.write(str(reference_landmark) + '\n')
 
     results = []
 
@@ -114,12 +118,14 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
         result = gs.register(reference_landmarks, target_landmarks, initial_momenta=initial_momenta, sigma=sigma,
                              return_all=True)
         registered_landmarks = result['registered_landmarks']
+
         def compute_average_distance(target_landmarks, registered_landmarks):
             dist = 0.
             for x, y in zip(registered_landmarks, target_landmarks):
                 dist += np.linalg.norm(x - y)
             dist /= registered_landmarks.shape[0]
             return dist
+
         print(f"Norm of difference: {compute_average_distance(target_landmarks, registered_landmarks)}")
 
         initial_momenta = result['initial_momenta']
@@ -141,7 +147,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
         axis, vals = u_ref_transformed.plot("Transformed reference solution", axis=axis)
         fig.colorbar(vals, ax=axis)
         plot_landmark_matchings(reference_landmarks, target_landmarks, registered_landmarks, axis=axis)
-        fig.savefig(f"{results_filepath}/transformed_reference_solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
+        fig.savefig(f"{results_filepath}/transformed_ref_solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
         plt.close(fig)
 
         fig = plt.figure()
@@ -166,8 +172,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
 
         rel_error = (u_ref_transformed - u).norm / u.norm
         print(f"Relative error for mu={mu}: {rel_error}")
-        restriction = np.s_[int(N_X*0.1):int(N_X*0.9), int(N_T*0.1):int(N_T*0.9)]
-        rel_error_small = (u_ref_transformed - u).get_norm(restriction=restriction) / u.get_norm(restriction=restriction)
+        rest = np.s_[int(N_X*0.1):int(N_X*0.9), int(N_T*0.1):int(N_T*0.9)]
+        rel_error_small = (u_ref_transformed - u).get_norm(restriction=rest) / u.get_norm(restriction=rest)
         print(f"Relative error on smaller domain for mu={mu}: {rel_error_small}")
         results.append((mu, rel_error))
         with open(f'{results_filepath}/relative_errors.txt', 'a') as errors_file:
