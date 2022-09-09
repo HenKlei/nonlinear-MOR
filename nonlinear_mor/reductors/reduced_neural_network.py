@@ -19,17 +19,19 @@ from nonlinear_mor.utils.torch.trainer import Trainer
 from nonlinear_mor.utils.versioning import get_git_hash, get_version
 
 
-class NonlinearNeuralNetworkReductor:
+class ReducedNonlinearNeuralNetworkReductor:
     def __init__(self, fom, training_set, reference_parameter,
-                 gs_smoothing_params={'alpha': 1000., 'exponent': 3}):
+                 gs_smoothing_params={'alpha': 1000., 'exponent': 3},
+                 reduced_gs_smoothing_params={'alpha': 1000., 'exponent': 3}):
         self.fom = fom
         self.training_set = training_set
         self.reference_parameter = reference_parameter
         self.reference_solution = self.fom.solve(reference_parameter)
 
         self.geodesic_shooter = geodesic_shooting.GeodesicShooting(**gs_smoothing_params)
+        self.reduced_gs_smoothing_params = reduced_gs_smoothing_params
 
-        self.logger = getLogger('nonlinear_mor.NonlinearNeuralNetworkReductor')
+        self.logger = getLogger('nonlinear_mor.ReducedNonlinearNeuralNetworkReductor')
 
     def write_summary(self, filepath_prefix='', registration_params={}):
         with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
@@ -42,6 +44,7 @@ class NonlinearNeuralNetworkReductor:
             summary_file.write('------------------\n')
             summary_file.write('Version: ' + get_version(geodesic_shooting) + '\n')
             summary_file.write(str(self.geodesic_shooter) + '\n')
+            summary_file.write(str(self.reduced_geodesic_shooter) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
 
@@ -73,7 +76,7 @@ class NonlinearNeuralNetworkReductor:
             with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
                 errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\n")
 
-        return v0
+        return result['vector_fields']
 
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
                                 registration_params={'sigma': 0.1, 'iterations': 20},
@@ -93,6 +96,7 @@ class NonlinearNeuralNetworkReductor:
                                                    registration_params=deepcopy(registration_params),
                                                    filepath_prefix=filepath_prefix)
                     full_velocity_fields = pool.map(perform_registration, full_solutions)
+                    full_velocity_fields = [item for sublist in full_velocity_fields for item in sublist]
             else:
                 full_velocity_fields = []
                 for i, (mu, u) in enumerate(full_solutions):
@@ -101,7 +105,7 @@ class NonlinearNeuralNetworkReductor:
                         self.logger.info("Reusing velocity field from previous registration ...")
                     else:
                         initial_velocity_field = None
-                    full_velocity_fields.append(self.perform_single_registration((mu, u),
+                    full_velocity_fields.extend(self.perform_single_registration((mu, u),
                                                 initial_velocity_field=initial_velocity_field,
                                                 save_intermediate_results=save_intermediate_results,
                                                 registration_params=deepcopy(registration_params),
@@ -153,8 +157,9 @@ class NonlinearNeuralNetworkReductor:
 
         for basis_size in basis_sizes:
             reduced_velocity_fields = all_reduced_velocity_fields[:basis_size]
+            self.reduced_geodesic_shooter = geodesic_shooting.ReducedGeodesicShooting(**self.reduced_gs_smoothing_params,
+                                                                                      assemble_backward_matrices=False)
             self.logger.info("Computing reduced coefficients ...")
-            print(len(full_velocity_fields))
             snapshot_matrix = np.stack([VectorField(data=a.reshape(full_velocity_fields[0].full_shape)).to_numpy().flatten()
                                         for a in reduced_velocity_fields])
             if l2_prod:
@@ -250,6 +255,6 @@ class NonlinearNeuralNetworkReductor:
 
     def build_rom(self, velocity_fields, neural_network):
         rom = ReducedSpacetimeModel(self.reference_solution, velocity_fields, neural_network,
-                                    self.geodesic_shooter, self.normalize_input,
+                                    self.reduced_geodesic_shooter, self.normalize_input,
                                     self.denormalize_output)
         return rom

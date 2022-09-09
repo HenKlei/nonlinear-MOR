@@ -1,1 +1,2 @@
 from .neural_network import NonlinearNeuralNetworkReductor
+from .reduced_neural_network import ReducedNonlinearNeuralNetworkReductor

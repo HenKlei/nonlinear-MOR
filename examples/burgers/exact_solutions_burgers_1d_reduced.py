@@ -6,7 +6,7 @@ import pathlib
 
 from geodesic_shooting.core import ScalarFunction
 
-from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor as NonlinearReductor
+from nonlinear_mor.reductors import ReducedNonlinearNeuralNetworkReductor as ReducedNonlinearReductor
 from nonlinear_mor.models import AnalyticalModel
 
 
@@ -48,8 +48,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     timestr = time.strftime("%Y%m%d-%H%M%S")
     filepath_prefix = f'results_nx_{N_X}_nt_{N_T}_Ntrain_{N_train}_basissize_{max_basis_size}_{timestr}'
 
-    reductor = NonlinearReductor(fom, parameters, reference_parameter,
-                                 gs_smoothing_params=gs_smoothing_params)
+    reductor = ReducedNonlinearReductor(fom, parameters, reference_parameter,
+                                        gs_smoothing_params=gs_smoothing_params)
     roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, return_all=True, restarts=restarts,
                                         registration_params=registration_params, filepath_prefix=filepath_prefix)
     reductor.write_summary(filepath_prefix=filepath_prefix, registration_params=registration_params)
