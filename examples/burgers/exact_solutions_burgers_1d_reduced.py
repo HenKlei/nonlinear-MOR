@@ -61,7 +61,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
 
     results_filepath = f'{filepath_prefix}/results'
     pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)
-    test_parameters = [0.5, 0.75, 1., 1.25]
+    test_parameters = [0.5, 0.75, 1., 1.25, 1.5]
     for basis_size in basis_sizes:
         results_filepath = f'{filepath_prefix}/results/basis_size_{basis_size}'
         pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)

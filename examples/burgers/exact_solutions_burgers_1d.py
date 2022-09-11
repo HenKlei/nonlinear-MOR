@@ -33,8 +33,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
          alpha: float = Option(100., help='Alpha'),
          exponent: int = Option(2, help='Exponent'),
          sigma: float = Option(0.1, help='Sigma'),
-         max_basis_size: int = Option(10, help='Maximum dimension of reduced basis'),
-         restarts: int = Option(10, help='Maximum number of training restarts')):
+         max_basis_size: int = Option(50, help='Maximum dimension of reduced basis'),
+         restarts: int = Option(25, help='Maximum number of training restarts')):
 
     fom = create_fom(N_X, N_T)
 

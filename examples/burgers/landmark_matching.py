@@ -74,7 +74,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     u_ref = fom.solve(reference_parameter)
     reference_landmarks = get_landmarks(mu=reference_parameter, all_landmarks=all_landmarks)
 
-    parameters = [0.75, 1., 1.25, 1.5]
+    parameters = [0.5, 0.75, 1., 1.25, 1.5]
 
     kwargs_kernel = {"sigma": kernel_sigma}
     gs = geodesic_shooting.LandmarkShooting(kwargs_kernel=kwargs_kernel, sampler_options={'order': 1})
