@@ -10,9 +10,12 @@ def pod(A, modes=10, product_operator=None, return_singular_values=False):
         C = B.dot(B_tilde.T)
         S, V = np.linalg.eig(C)
         selected_modes = min(modes, V.shape[0])
+        S[(S <= 0.) | np.isclose(S, 0.)] = 0.
         S = np.sqrt(S[:selected_modes])
         V = V.T
-        V = B.T.dot((V[:selected_modes] / S[:, np.newaxis]).T)
+        S_pos = S.copy()
+        S_pos[np.isclose(S_pos, 0.)] = 1.
+        V = B.T.dot((V[:selected_modes] / S_pos[:, np.newaxis]).T)
         V = V.T
         if return_singular_values:
             return np.real(V), np.real(S)
