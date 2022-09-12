@@ -10,9 +10,9 @@ import pathlib
 
 import geodesic_shooting
 from geodesic_shooting.core import VectorField
+from geodesic_shooting.utils.reduced import pod
 
 from nonlinear_mor.models import ReducedSpacetimeModel
-from nonlinear_mor.utils import pod
 from nonlinear_mor.utils.logger import getLogger
 from nonlinear_mor.utils.torch.neural_networks import FullyConnectedNetwork
 from nonlinear_mor.utils.torch.trainer import Trainer
@@ -130,17 +130,17 @@ class NonlinearNeuralNetworkReductor:
             else:
                 product_operator = self.geodesic_shooter.regularizer.cauchy_navier
             all_reduced_velocity_fields, singular_values = pod(full_velocity_fields,
-                                                               modes=max(list(basis_sizes)),
+                                                               num_modes=max(list(basis_sizes)),
                                                                product_operator=product_operator,
-                                                               return_singular_values=True)
+                                                               return_singular_values='all')
 
         if not l2_prod:
             norms = []
             for i, v in enumerate(all_reduced_velocity_fields):
                 v_vf = VectorField(data=v.reshape(full_velocity_fields[0].full_shape))
-                v_norm = np.sqrt(product_operator(v_vf).to_numpy().flatten().dot(v.flatten()))
+                v_norm = np.sqrt(product_operator(v_vf).flatten().dot(v.flatten()))
                 norms.append(v_norm)
-                all_reduced_velocity_fields[i] = v / v_norm
+                all_reduced_velocity_fields[i] = v_vf / v_norm
 
         if save_intermediate_results:
             filepath = filepath_prefix + '/intermediate_results'
@@ -154,15 +154,11 @@ class NonlinearNeuralNetworkReductor:
         for basis_size in basis_sizes:
             reduced_velocity_fields = all_reduced_velocity_fields[:basis_size]
             self.logger.info("Computing reduced coefficients ...")
-            print(len(full_velocity_fields))
-            snapshot_matrix = np.stack([VectorField(data=a.reshape(full_velocity_fields[0].full_shape)).to_numpy().flatten()
-                                        for a in reduced_velocity_fields])
+            snapshot_matrix = np.stack([a.flatten() for a in reduced_velocity_fields])
             if l2_prod:
-                prod_reduced_velocity_fields = np.stack([a.to_numpy().flatten()
-                                                         for a in full_velocity_fields])
+                prod_reduced_velocity_fields = np.stack([a.flatten() for a in full_velocity_fields])
             else:
-                prod_reduced_velocity_fields = np.stack([product_operator(a).to_numpy().flatten()
-                                                         for a in full_velocity_fields])
+                prod_reduced_velocity_fields = np.stack([product_operator(a).flatten() for a in full_velocity_fields])
             reduced_coefficients = snapshot_matrix.dot(prod_reduced_velocity_fields.T).T
             assert reduced_coefficients.shape == (len(self.training_set), len(reduced_velocity_fields))
 

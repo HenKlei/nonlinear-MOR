@@ -10,9 +10,9 @@ import pathlib
 
 import geodesic_shooting
 from geodesic_shooting.core import VectorField
+from geodesic_shooting.utils.reduced import pod
 
 from nonlinear_mor.models import ReducedSpacetimeModel
-from nonlinear_mor.utils import pod
 from nonlinear_mor.utils.logger import getLogger
 from nonlinear_mor.utils.torch.neural_networks import FullyConnectedNetwork
 from nonlinear_mor.utils.torch.trainer import Trainer
@@ -44,7 +44,7 @@ class ReducedNonlinearNeuralNetworkReductor:
             summary_file.write('------------------\n')
             summary_file.write('Version: ' + get_version(geodesic_shooting) + '\n')
             summary_file.write(str(self.geodesic_shooter) + '\n')
-            summary_file.write(str(self.reduced_geodesic_shooter) + '\n')
+            summary_file.write('Reduced smoothing parameters: ' + str(self.reduced_gs_smoothing_params) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
 
@@ -134,15 +134,14 @@ class ReducedNonlinearNeuralNetworkReductor:
             else:
                 product_operator = self.geodesic_shooter.regularizer.cauchy_navier
             all_reduced_velocity_fields, singular_values = pod(full_velocity_fields,
-                                                               modes=max(list(basis_sizes)),
+                                                               num_modes=max(list(basis_sizes)),
                                                                product_operator=product_operator,
-                                                               return_singular_values=True)
+                                                               return_singular_values='all')
 
         if not l2_prod:
             norms = []
             for i, v in enumerate(all_reduced_velocity_fields):
-                v_vf = VectorField(data=v.reshape(full_velocity_fields[0].full_shape))
-                v_norm = np.sqrt(product_operator(v_vf).to_numpy().flatten().dot(v.flatten()))
+                v_norm = np.sqrt(product_operator(v).flatten().dot(v.flatten()))
                 norms.append(v_norm)
                 all_reduced_velocity_fields[i] = v / v_norm
 
@@ -157,17 +156,20 @@ class ReducedNonlinearNeuralNetworkReductor:
 
         for basis_size in basis_sizes:
             reduced_velocity_fields = all_reduced_velocity_fields[:basis_size]
-            self.reduced_geodesic_shooter = geodesic_shooting.ReducedGeodesicShooting(**self.reduced_gs_smoothing_params,
-                                                                                      assemble_backward_matrices=False)
+            reduced_geodesic_shooter = geodesic_shooting.ReducedGeodesicShooting(rb_vector_fields=reduced_velocity_fields,
+                                                                                 **self.reduced_gs_smoothing_params,
+                                                                                 assemble_backward_matrices=False)
+
+            self.logger.info("Writing reduced quantities to disk ...")
+            with open(f'{filepath}/reduced_quantities.pickle', 'wb') as reduced_quantities_file:
+                pickle.dump(reduced_geodesic_shooter.get_reduced_quantities(), reduced_quantities_file)
+
             self.logger.info("Computing reduced coefficients ...")
-            snapshot_matrix = np.stack([VectorField(data=a.reshape(full_velocity_fields[0].full_shape)).to_numpy().flatten()
-                                        for a in reduced_velocity_fields])
+            snapshot_matrix = np.stack([a.flatten() for a in reduced_velocity_fields])
             if l2_prod:
-                prod_reduced_velocity_fields = np.stack([a.to_numpy().flatten()
-                                                         for a in full_velocity_fields])
+                prod_reduced_velocity_fields = np.stack([a.flatten() for a in full_velocity_fields[::reduced_geodesic_shooter.time_steps]])
             else:
-                prod_reduced_velocity_fields = np.stack([product_operator(a).to_numpy().flatten()
-                                                         for a in full_velocity_fields])
+                prod_reduced_velocity_fields = np.stack([product_operator(a).flatten() for a in full_velocity_fields[::reduced_geodesic_shooter.time_steps]])
             reduced_coefficients = snapshot_matrix.dot(prod_reduced_velocity_fields.T).T
             assert reduced_coefficients.shape == (len(self.training_set), len(reduced_velocity_fields))
 
@@ -192,7 +194,7 @@ class ReducedNonlinearNeuralNetworkReductor:
                     reduced_velocity_fields[i] = v * norms[i]
 
             self.logger.info("Building reduced model ...")
-            rom = self.build_rom(reduced_velocity_fields, best_ann)
+            rom = self.build_rom(reduced_velocity_fields, best_ann, reduced_geodesic_shooter)
 
             if return_all:
                 roms.append((rom, {'training_data': training_data,
@@ -253,8 +255,8 @@ class ReducedNonlinearNeuralNetworkReductor:
         best_loss, _ = trainer.train(training_data, validation_data, **training_params)
         return trainer.network, best_loss
 
-    def build_rom(self, velocity_fields, neural_network):
+    def build_rom(self, velocity_fields, neural_network, reduced_geodesic_shooter):
         rom = ReducedSpacetimeModel(self.reference_solution, velocity_fields, neural_network,
-                                    self.reduced_geodesic_shooter, self.normalize_input,
+                                    reduced_geodesic_shooter, self.normalize_input,
                                     self.denormalize_output)
         return rom
