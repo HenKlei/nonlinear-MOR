@@ -31,7 +31,7 @@ class NonlinearNeuralNetworkReductor:
 
         self.logger = getLogger('nonlinear_mor.NonlinearNeuralNetworkReductor')
 
-    def write_summary(self, filepath_prefix='', registration_params={}):
+    def write_summary(self, filepath_prefix='', registration_params={}, additional_text=""):
         with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
             summary_file.write('========================================================\n')
             summary_file.write('Git hash: ' + get_git_hash() + '\n')
@@ -44,6 +44,7 @@ class NonlinearNeuralNetworkReductor:
             summary_file.write(str(self.geodesic_shooter) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
+            summary_file.write(additional_text)
 
     def compute_full_solutions(self, full_solutions_file=None):
         if full_solutions_file:
@@ -137,10 +138,9 @@ class NonlinearNeuralNetworkReductor:
         if not l2_prod:
             norms = []
             for i, v in enumerate(all_reduced_velocity_fields):
-                v_vf = VectorField(data=v.reshape(full_velocity_fields[0].full_shape))
-                v_norm = np.sqrt(product_operator(v_vf).flatten().dot(v.flatten()))
+                v_norm = np.sqrt(product_operator(v).flatten().dot(v.flatten()))
                 norms.append(v_norm)
-                all_reduced_velocity_fields[i] = v_vf / v_norm
+                all_reduced_velocity_fields[i] = v / v_norm
 
         if save_intermediate_results:
             filepath = filepath_prefix + '/intermediate_results'

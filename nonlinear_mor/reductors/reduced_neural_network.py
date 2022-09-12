@@ -33,7 +33,7 @@ class ReducedNonlinearNeuralNetworkReductor:
 
         self.logger = getLogger('nonlinear_mor.ReducedNonlinearNeuralNetworkReductor')
 
-    def write_summary(self, filepath_prefix='', registration_params={}):
+    def write_summary(self, filepath_prefix='', registration_params={}, additional_text=""):
         with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
             summary_file.write('========================================================\n')
             summary_file.write('Git hash: ' + get_git_hash() + '\n')
@@ -47,6 +47,7 @@ class ReducedNonlinearNeuralNetworkReductor:
             summary_file.write('Reduced smoothing parameters: ' + str(self.reduced_gs_smoothing_params) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
+            summary_file.write(additional_text)
 
     def compute_full_solutions(self, full_solutions_file=None):
         if full_solutions_file:

@@ -83,7 +83,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
 
     import time
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    filepath_prefix = f'results_landmarks_nx_{N_X}_nt_{N_T}_{timestr}'
+    filepath_prefix = f'results_landmarks_{timestr}'
 
     import pathlib
     results_filepath = f'{filepath_prefix}/results'
@@ -94,6 +94,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
         summary_file.write('========================================================\n')
         summary_file.write('FOM: ' + str(fom) + '\n')
         summary_file.write('------------------\n')
+        summary_file.write('Number of elements in x-direction: ' + str(N_X) + '\n')
+        summary_file.write('Number of elements in t-direction: ' + str(N_T) + '\n')
         summary_file.write('Reference parameter: ' + str(reference_parameter) + '\n')
         summary_file.write('------------------\n')
         summary_file.write('Geodesic Shooting:\n')

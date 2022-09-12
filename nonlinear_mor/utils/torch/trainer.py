@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils as utils
 
+import numpy as np
+
 from .dataset import CustomDataset
 from .progressbar import ProgressTraining
 
@@ -221,10 +223,16 @@ class Trainer:
                     if self.es_scheduler and self.es_scheduler(losses['val'], losses['train']):
                         print()
                         print()
-                        print('Early stopping...')
+                        print('Early stopping ...')
                         if hasattr(self.es_scheduler, 'best_loss'):
                             print(f'Minimum validation loss: {self.es_scheduler.best_loss}')
                         return self.es_scheduler.best_loss, self.es_scheduler.training_loss
+
+                if np.isnan(losses[phase]):
+                    print()
+                    print()
+                    print('Stopping because loss is NAN ...')
+                    return self.es_scheduler.best_loss, self.es_scheduler.training_loss
 
             if show_progress_bar:
                 bar.update(losses['train'], losses['val'])

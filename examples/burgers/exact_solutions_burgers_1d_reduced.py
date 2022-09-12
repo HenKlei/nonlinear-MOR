@@ -33,7 +33,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
          alpha: float = Option(100., help='Alpha'),
          exponent: int = Option(2, help='Exponent'),
          sigma: float = Option(0.1, help='Sigma'),
-         max_basis_size: int = Option(10, help='Maximum dimension of reduced basis'),
+         max_basis_size: int = Option(50, help='Maximum dimension of reduced basis'),
          restarts: int = Option(10, help='Maximum number of training restarts')):
 
     fom = create_fom(N_X, N_T)
@@ -46,13 +46,20 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
 
     import time
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    filepath_prefix = f'results_nx_{N_X}_nt_{N_T}_Ntrain_{N_train}_basissize_{max_basis_size}_{timestr}'
+    filepath_prefix = f'results_reduced_geodesic_shooting_{timestr}'
 
     reductor = ReducedNonlinearReductor(fom, parameters, reference_parameter,
                                         gs_smoothing_params=gs_smoothing_params)
     roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, return_all=True, restarts=restarts,
                                         registration_params=registration_params, filepath_prefix=filepath_prefix)
-    reductor.write_summary(filepath_prefix=filepath_prefix, registration_params=registration_params)
+    reductor.write_summary(filepath_prefix=filepath_prefix, registration_params=registration_params,
+                           additional_text="------------------\n" +
+                                           f"Number of elements in x-direction: {N_X}\n" +
+                                           f"Number of elements in t-direction: {N_T}\n" +
+                                           f"Reference parameter: {reference_parameter}\n" +
+                                           f"Number of training parameters: {N_train}\n" +
+                                           f"Maximum dimension of the reduced basis: {max_basis_size}\n" +
+                                           f"Number of training restarts in neural network training: {restarts}")
 
     outputs_filepath = f'{filepath_prefix}/outputs'
     pathlib.Path(outputs_filepath).mkdir(parents=True, exist_ok=True)

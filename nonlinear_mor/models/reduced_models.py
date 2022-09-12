@@ -3,6 +3,7 @@ import pathlib
 
 from geodesic_shooting import ReducedGeodesicShooting
 from geodesic_shooting.core import VectorField
+from geodesic_shooting.utils.helper_functions import lincomb
 
 
 class ReducedSpacetimeModel:
@@ -22,9 +23,8 @@ class ReducedSpacetimeModel:
         if isinstance(self.geodesic_shooter, ReducedGeodesicShooting):
             initial_velocity_field = reduced_coefficients
         else:
-            initial_velocity_field = self.reduced_velocity_fields.T.dot(reduced_coefficients)
+            initial_velocity_field = lincomb(self.reduced_velocity_fields, reduced_coefficients)
             full_shape = (*self.reference_solution.spatial_shape, self.reference_solution.dim)
-            initial_velocity_field = VectorField(data=initial_velocity_field.reshape(full_shape))
             if save_intermediate_results:
                 filepath_tex = filepath_prefix + "/figures_tex"
                 pathlib.Path(filepath_tex).mkdir(parents=True, exist_ok=True)
