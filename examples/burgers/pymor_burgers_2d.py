@@ -64,7 +64,6 @@ def main(grid: int = Option(60, help='Use grid with (2*NI)*NI elements.'),
                                            f"Maximum dimension of the reduced basis: {max_basis_size}\n" +
                                            f"Number of training restarts in neural network training: {restarts}")
     roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, return_all=True, restarts=restarts,
-                                        save_intermediate_results=False,
                                         registration_params=registration_params, filepath_prefix=filepath_prefix)
 
     outputs_filepath = f'{filepath_prefix}/outputs'
