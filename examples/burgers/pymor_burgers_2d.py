@@ -54,9 +54,6 @@ def main(grid: int = Option(60, help='Use grid with (2*NI)*NI elements.'),
 
     reductor = NonlinearReductor(fom, parameters, reference_parameter,
                                  gs_smoothing_params=gs_smoothing_params)
-    roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, return_all=True, restarts=restarts,
-                                        save_intermediate_results=False,
-                                        registration_params=registration_params, filepath_prefix=filepath_prefix)
     reductor.write_summary(filepath_prefix=filepath_prefix, registration_params=registration_params,
                            additional_text="------------------\n" +
                                            f"Number of elements in x-direction: {grid}\n" +
@@ -65,6 +62,9 @@ def main(grid: int = Option(60, help='Use grid with (2*NI)*NI elements.'),
                                            f"Number of training parameters: {N_train}\n" +
                                            f"Maximum dimension of the reduced basis: {max_basis_size}\n" +
                                            f"Number of training restarts in neural network training: {restarts}")
+    roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, return_all=True, restarts=restarts,
+                                        save_intermediate_results=False,
+                                        registration_params=registration_params, filepath_prefix=filepath_prefix)
 
     outputs_filepath = f'{filepath_prefix}/outputs'
     pathlib.Path(outputs_filepath).mkdir(parents=True, exist_ok=True)
