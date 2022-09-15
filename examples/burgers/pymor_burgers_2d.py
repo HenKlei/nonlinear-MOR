@@ -56,7 +56,8 @@ def main(grid: int = Option(60, help='Use grid with (2*NI)*NI elements.'),
                                  gs_smoothing_params=gs_smoothing_params)
     reductor.write_summary(filepath_prefix=filepath_prefix, registration_params=registration_params,
                            additional_text="------------------\n" +
-                                           f"Number of elements in x-direction: {grid}\n" +
+                                           f"Number of elements in x-direction: {2*grid}\n" +
+                                           f"Number of elements in y-direction: {grid}\n" +
                                            f"Number of elements in t-direction: {nt}\n" +
                                            f"Reference parameter: {reference_parameter}\n" +
                                            f"Number of training parameters: {N_train}\n" +
