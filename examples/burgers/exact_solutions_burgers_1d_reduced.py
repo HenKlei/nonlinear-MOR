@@ -31,7 +31,9 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
          N_train: int = Option(50, help='Number of training parameters'),
          reference_parameter: float = Option(0.25, help='Reference parameter'),
          alpha: float = Option(100., help='Alpha'),
+         alpha_red: float = Option(100., help='Alpha for reduced geodesic shooting'),
          exponent: int = Option(2, help='Exponent'),
+         exponent_red: int = Option(2, help='Exponent for reduced geodesic shooting'),
          sigma: float = Option(0.1, help='Sigma'),
          max_basis_size: int = Option(50, help='Maximum dimension of reduced basis'),
          restarts: int = Option(10, help='Maximum number of training restarts')):
@@ -41,6 +43,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     parameters = np.linspace(0.25, 1.5, N_train)
 
     gs_smoothing_params = {'alpha': alpha, 'exponent': exponent}
+    reduced_gs_smoothing_params = {'alpha': alpha_red, 'exponent': exponent_red}
     registration_params = {'sigma': sigma}
     basis_sizes = range(1, max_basis_size+1)
 
@@ -49,7 +52,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     filepath_prefix = f'results_reduced_geodesic_shooting_{timestr}'
 
     reductor = ReducedNonlinearReductor(fom, parameters, reference_parameter,
-                                        gs_smoothing_params=gs_smoothing_params)
+                                        gs_smoothing_params=gs_smoothing_params,
+                                        reduced_gs_smoothing_params=reduced_gs_smoothing_params)
     reductor.write_summary(filepath_prefix=filepath_prefix, registration_params=registration_params,
                            additional_text="------------------\n" +
                                            f"Number of elements in x-direction: {N_X}\n" +
