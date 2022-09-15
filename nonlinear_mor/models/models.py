@@ -1,6 +1,8 @@
 import numpy as np
 from functools import partial
 
+from geodesic_shooting.core import ScalarFunction
+
 from nonlinear_mor.utils.logger import getLogger
 
 
@@ -63,7 +65,7 @@ class AnalyticalModel:
         return self.name
 
     def solve(self, mu):
-        logger = getLogger('nonlinear_mor.SpacetimeModel')
+        logger = getLogger('nonlinear_mor.AnalyticalModel')
 
         XX, YY = np.meshgrid(np.linspace(self.x_min, self.x_max, self.n_x),
                              np.linspace(self.t_min, self.t_max, self.n_t))
@@ -73,3 +75,25 @@ class AnalyticalModel:
             result = self.exact_solution(XY, mu=mu)
 
         return result
+
+
+class WrappedpyMORModel:
+    def __init__(self, model, spatial_shape=(100, ), name='WrappedpyMORModel'):
+        self.model = model
+
+        self.spatial_shape = spatial_shape
+
+        self.name = name
+
+    def __str__(self):
+        return self.name
+
+    def solve(self, mu):
+        logger = getLogger('nonlinear_mor.WrappedpyMORModel')
+
+        with logger.block(f"Calling pyMOR to solve for mu={mu} ..."):
+            u = self.model.solve(mu).to_numpy()
+
+        u = u.reshape((u.shape[0], *self.spatial_shape))
+
+        return ScalarFunction(data=u)

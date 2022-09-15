@@ -1,3 +1,3 @@
-from .models import SpacetimeModel, AnalyticalModel
+from .models import SpacetimeModel, AnalyticalModel, WrappedpyMORModel
 
 from .reduced_models import ReducedSpacetimeModel
