@@ -36,7 +36,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
          exponent_red: int = Option(2, help='Exponent for reduced geodesic shooting'),
          sigma: float = Option(0.1, help='Sigma'),
          max_basis_size: int = Option(50, help='Maximum dimension of reduced basis'),
-         restarts: int = Option(10, help='Maximum number of training restarts')):
+         restarts: int = Option(10, help='Maximum number of training restarts'),
+         full_velocity_fields_filepath_prefix: str = Option(None, help='Filepath prefix for full velocity fields file')):
 
     fom = create_fom(N_X, N_T)
 
@@ -51,6 +52,9 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     timestr = time.strftime("%Y%m%d-%H%M%S")
     filepath_prefix = f'results_reduced_geodesic_shooting_{timestr}'
 
+    if full_velocity_fields_filepath_prefix:
+        full_velocity_fields_file = f'{full_velocity_fields_filepath_prefix}/outputs/full_velocity_fields'
+
     reductor = ReducedNonlinearReductor(fom, parameters, reference_parameter,
                                         gs_smoothing_params=gs_smoothing_params,
                                         reduced_gs_smoothing_params=reduced_gs_smoothing_params)
@@ -63,6 +67,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
                                            f"Maximum dimension of the reduced basis: {max_basis_size}\n" +
                                            f"Number of training restarts in neural network training: {restarts}")
     roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, return_all=True, restarts=restarts,
+                                        full_velocity_fields_file=full_velocity_fields_file,
                                         registration_params=registration_params, filepath_prefix=filepath_prefix)
 
     outputs_filepath = f'{filepath_prefix}/outputs'
