@@ -34,6 +34,7 @@ class ReducedNonlinearNeuralNetworkReductor:
         self.logger = getLogger('nonlinear_mor.ReducedNonlinearNeuralNetworkReductor')
 
     def write_summary(self, filepath_prefix='', registration_params={}, additional_text=""):
+        pathlib.Path(filepath_prefix).mkdir(parents=True, exist_ok=True)
         with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
             summary_file.write('========================================================\n')
             summary_file.write('Git hash: ' + get_git_hash() + '\n')

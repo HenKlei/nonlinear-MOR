@@ -2,7 +2,6 @@ import pickle
 import random
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
 from functools import partial
 import multiprocessing
 from copy import deepcopy
@@ -32,6 +31,7 @@ class NonlinearNeuralNetworkReductor:
         self.logger = getLogger('nonlinear_mor.NonlinearNeuralNetworkReductor')
 
     def write_summary(self, filepath_prefix='', registration_params={}, additional_text=""):
+        pathlib.Path(filepath_prefix).mkdir(parents=True, exist_ok=True)
         with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
             summary_file.write('========================================================\n')
             summary_file.write('Git hash: ' + get_git_hash() + '\n')
