@@ -38,7 +38,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
          max_basis_size: int = Option(50, help='Maximum dimension of reduced basis'),
          restarts: int = Option(10, help='Maximum number of training restarts'),
          full_velocity_fields_filepath_prefix: str = Option(None, help='Filepath prefix for full velocity fields file'),
-         precomputed_quantities_filepath: str = Option(None, help='Filepath to precomputed quantities for reduced geodesic shooting')):
+         precomputed_quantities_filepath_prefix: str = Option(None, help='Filepath to precomputed quantities for reduced geodesic shooting')):
 
     fom = create_fom(N_X, N_T)
 
@@ -56,14 +56,6 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     if full_velocity_fields_filepath_prefix:
         full_velocity_fields_file = f'{full_velocity_fields_filepath_prefix}/outputs/full_velocity_fields'
 
-    if precomputed_quantities_filepath:
-        with open(precomputed_quantities_filepath, 'rb') as precomputed_quantities_file:
-            precomputed_quantities = pickle.load(precomputed_quantities_file)
-        assemble_forward_matrices = False
-    else:
-        precomputed_quantities = {}
-        assemble_forward_matrices = True
-
     reductor = ReducedNonlinearReductor(fom, parameters, reference_parameter,
                                         gs_smoothing_params=gs_smoothing_params,
                                         reduced_gs_smoothing_params=reduced_gs_smoothing_params)
@@ -78,8 +70,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, return_all=True, restarts=restarts,
                                         full_velocity_fields_file=full_velocity_fields_file,
                                         registration_params=registration_params,
-                                        precomputed_quantities=precomputed_quantities,
-                                        assemble_forward_matrices=assemble_forward_matrices,
+                                        precomputed_quantities_filepath_prefix=precomputed_quantities_filepath_prefix,
                                         filepath_prefix=filepath_prefix)
 
     outputs_filepath = f'{filepath_prefix}/outputs'

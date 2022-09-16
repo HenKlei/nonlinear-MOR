@@ -117,7 +117,7 @@ class ReducedNonlinearNeuralNetworkReductor:
     def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10, save_intermediate_results=True,
                registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20], training_params={},
                num_workers=1, full_solutions_file=None, full_velocity_fields_file=None, reuse_vector_fields=True,
-               precomputed_quantities={}, assemble_forward_matrices=True, filepath_prefix=''):
+               precomputed_quantities_filepath_prefix=None, filepath_prefix=''):
         assert isinstance(restarts, int) and restarts > 0
 
         with self.logger.block("Computing full solutions ..."):
@@ -156,8 +156,18 @@ class ReducedNonlinearNeuralNetworkReductor:
 
         roms = []
 
+        self.logger.info("Starting computations for different basis sizes ...")
         for basis_size in basis_sizes:
+            self.logger.info(f"Performing computations for basis size of {basis_size} ...")
+
             reduced_velocity_fields = all_reduced_velocity_fields[:basis_size]
+            if precomputed_quantities_filepath_prefix:
+                with open(f'{precomputed_quantities_filepath_prefix}/reduced_quantities_{basis_size}.pickle', 'rb') as precomputed_quantities_file:
+                    precomputed_quantities = pickle.load(precomputed_quantities_file)
+                assemble_forward_matrices = False
+            else:
+                precomputed_quantities = {}
+                assemble_forward_matrices = True
             reduced_geodesic_shooter = geodesic_shooting.ReducedGeodesicShooting(rb_vector_fields=reduced_velocity_fields,
                                                                                  **self.reduced_gs_smoothing_params,
                                                                                  precomputed_quantities=precomputed_quantities,
@@ -165,7 +175,7 @@ class ReducedNonlinearNeuralNetworkReductor:
                                                                                  assemble_backward_matrices=False)
 
             self.logger.info("Writing reduced quantities to disk ...")
-            with open(f'{filepath}/reduced_quantities.pickle', 'wb') as reduced_quantities_file:
+            with open(f'{filepath}/reduced_quantities_{basis_size}.pickle', 'wb') as reduced_quantities_file:
                 pickle.dump(reduced_geodesic_shooter.get_reduced_quantities(), reduced_quantities_file)
 
             self.logger.info("Computing reduced coefficients ...")
