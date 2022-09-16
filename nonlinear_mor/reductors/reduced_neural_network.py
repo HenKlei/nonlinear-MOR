@@ -140,13 +140,6 @@ class ReducedNonlinearNeuralNetworkReductor:
                                                                product_operator=product_operator,
                                                                return_singular_values='all')
 
-        if not l2_prod:
-            norms = []
-            for i, v in enumerate(all_reduced_velocity_fields):
-                v_norm = np.sqrt(product_operator(v).flatten().dot(v.flatten()))
-                norms.append(v_norm)
-                all_reduced_velocity_fields[i] = v / v_norm
-
         if save_intermediate_results:
             filepath = filepath_prefix + '/intermediate_results'
             pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
@@ -202,10 +195,6 @@ class ReducedNonlinearNeuralNetworkReductor:
 
             best_ann, best_loss = self.multiple_restarts_training(training_data, validation_data, layers_sizes,
                                                                   restarts, trainer_params, training_params)
-
-            if not l2_prod:
-                for i, v in enumerate(reduced_velocity_fields):
-                    reduced_velocity_fields[i] = v * norms[i]
 
             self.logger.info("Building reduced model ...")
             rom = self.build_rom(reduced_velocity_fields, best_ann, reduced_geodesic_shooter)
