@@ -97,3 +97,8 @@ class WrappedpyMORModel:
         u = u.reshape((u.shape[0], *self.spatial_shape))
 
         return ScalarFunction(data=u)
+
+    def visualize(self, u):
+        u = u.to_numpy()
+        U = self.model.operator.range.from_numpy(u.reshape(u.shape[0], -1))
+        self.model.visualize(U)
