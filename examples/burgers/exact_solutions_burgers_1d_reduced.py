@@ -59,8 +59,10 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     if precomputed_quantities_filepath:
         with open(precomputed_quantities_filepath, 'rb') as precomputed_quantities_file:
             precomputed_quantities = pickle.load(precomputed_quantities_file)
+        assemble_forward_matrices = False
     else:
         precomputed_quantities = {}
+        assemble_forward_matrices = True
 
     reductor = ReducedNonlinearReductor(fom, parameters, reference_parameter,
                                         gs_smoothing_params=gs_smoothing_params,
@@ -77,6 +79,7 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
                                         full_velocity_fields_file=full_velocity_fields_file,
                                         registration_params=registration_params,
                                         precomputed_quantities=precomputed_quantities,
+                                        assemble_forward_matrices=assemble_forward_matrices,
                                         filepath_prefix=filepath_prefix)
 
     outputs_filepath = f'{filepath_prefix}/outputs'
