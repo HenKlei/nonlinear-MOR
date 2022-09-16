@@ -117,7 +117,7 @@ class ReducedNonlinearNeuralNetworkReductor:
     def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10, save_intermediate_results=True,
                registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20], training_params={},
                num_workers=1, full_solutions_file=None, full_velocity_fields_file=None, reuse_vector_fields=True,
-               filepath_prefix=''):
+               precomputed_quantities={}, filepath_prefix=''):
         assert isinstance(restarts, int) and restarts > 0
 
         with self.logger.block("Computing full solutions ..."):
@@ -160,6 +160,7 @@ class ReducedNonlinearNeuralNetworkReductor:
             reduced_velocity_fields = all_reduced_velocity_fields[:basis_size]
             reduced_geodesic_shooter = geodesic_shooting.ReducedGeodesicShooting(rb_vector_fields=reduced_velocity_fields,
                                                                                  **self.reduced_gs_smoothing_params,
+                                                                                 precomputed_quantities=precomputed_quantities,
                                                                                  assemble_backward_matrices=False)
 
             self.logger.info("Writing reduced quantities to disk ...")
