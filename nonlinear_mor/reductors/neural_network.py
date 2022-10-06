@@ -69,6 +69,7 @@ class NonlinearNeuralNetworkReductor:
 
             u.save(f'{filepath}/full_solution_mu_{str(mu).replace(".", "_")}.png')
             transformed_input.save(f'{filepath}/mapped_solution_mu_{str(mu).replace(".", "_")}.png')
+            (u - transformed_input).save(f'{filepath}/difference_mu_{str(mu).replace(".", "_")}.png')
             v0.save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}.png')
             norm = (u - transformed_input).norm / u.norm
             with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
@@ -163,8 +164,8 @@ class NonlinearNeuralNetworkReductor:
             assert reduced_coefficients.shape == (len(self.training_set), len(reduced_velocity_fields))
 
             self.logger.info("Approximating mapping from parameters to reduced coefficients ...")
-            training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for (mu, _), coeff in
-                             zip(full_solutions, reduced_coefficients)]
+            training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for mu, coeff in
+                             zip(self.training_set, reduced_coefficients)]
             random.shuffle(training_data)
             validation_data = training_data[:int(0.1 * len(training_data)) + 1]
             training_data = training_data[int(0.1 * len(training_data)) + 2:]
@@ -229,7 +230,7 @@ class NonlinearNeuralNetworkReductor:
                 neural_network, loss = self.train_neural_network(layers_sizes, training_data,
                                                                  validation_data,
                                                                  trainer_params, training_params)
-                if best_loss is None or best_loss > loss:
+                if best_loss is None or loss is None or best_loss > loss:
                     best_neural_network = neural_network
                     best_loss = loss
 
