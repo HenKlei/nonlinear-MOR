@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import pathlib
 
@@ -24,7 +25,6 @@ class ReducedSpacetimeModel:
             initial_velocity_field = reduced_coefficients
         else:
             initial_velocity_field = lincomb(self.reduced_velocity_fields, reduced_coefficients)
-            full_shape = (*self.reference_solution.spatial_shape, self.reference_solution.dim)
             if save_intermediate_results:
                 filepath_tex = filepath_prefix + "/figures_tex"
                 pathlib.Path(filepath_tex).mkdir(parents=True, exist_ok=True)
@@ -35,3 +35,27 @@ class ReducedSpacetimeModel:
         flow = self.geodesic_shooter.integrate_forward_flow(velocity_fields)
         mapped_solution = self.reference_solution.push_forward(flow)
         return mapped_solution
+
+
+class ReducedDictionaryModel:
+    def __init__(self, geodesic_shooter, U, V, Psis, pi, training_params, normalize_input, denormalize_output):
+        self.geodesic_shooter = geodesic_shooter
+        self.U = U
+        self.V = V
+        self.Psis = Psis
+        self.pi = pi
+        self.training_params = training_params
+        self.normalize_input = normalize_input
+        self.denormalize_output = denormalize_output
+
+    def solve(self, mu):
+        i = np.argmin([np.linalg.norm(np.array([mu, ]) - np.array([mu_train, ])) for mu_train in enumerate(self.training_params)])
+        k = self.pi[i]
+        normalized_mu = self.normalize_input(torch.Tensor([mu, ]))
+        normalized_reduced_coefficients = self.Psis[k](normalized_mu).data.numpy()
+        reduced_coefficients = self.denormalize_output(normalized_reduced_coefficients)
+        initial_velocity_field = lincomb(self.V[k], reduced_coefficients)
+        velocity_fields = self.geodesic_shooter.integrate_forward_vector_field(initial_velocity_field)
+        flow = self.geodesic_shooter.integrate_forward_flow(velocity_fields)
+        reduced_solution = self.U[k].push_forward(flow)
+        return reduced_solution
