@@ -60,7 +60,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
                                            f"Tolerance used in Greedy: {tol}\n" +
                                            f"Maximum dimension of the reduced basis: {max_basis_size}\n" +
                                            f"Number of training restarts in neural network training: {restarts}")
-    rom = reductor.reduce(max_basis_size=max_basis_size, l2_prod=False, registration_params=registration_params)
+    rom = reductor.reduce(max_basis_size=max_basis_size, l2_prod=False, registration_params=registration_params,
+                          save_intermediate_results=True, filepath_prefix=filepath_prefix)
 
     results_filepath = f'{filepath_prefix}/results'
     pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)

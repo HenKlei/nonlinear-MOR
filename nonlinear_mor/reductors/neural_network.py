@@ -8,7 +8,6 @@ from copy import deepcopy
 import pathlib
 
 import geodesic_shooting
-from geodesic_shooting.core import VectorField
 from geodesic_shooting.utils.reduced import pod
 
 from nonlinear_mor.models import ReducedSpacetimeModel
@@ -110,10 +109,10 @@ class NonlinearNeuralNetworkReductor:
                                                 filepath_prefix=filepath_prefix))
         return full_velocity_fields
 
-    def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10, save_intermediate_results=True,
-               registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20], training_params={},
-               num_workers=1, full_solutions_file=None, full_velocity_fields_file=None, reuse_vector_fields=True,
-               filepath_prefix=''):
+    def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10,
+               save_intermediate_results=True, registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20],
+               training_params={}, num_workers=1, full_solutions_file=None, full_velocity_fields_file=None,
+               reuse_vector_fields=True, filepath_prefix=''):
         assert isinstance(restarts, int) and restarts > 0
 
         with self.logger.block("Computing full solutions ..."):

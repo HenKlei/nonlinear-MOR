@@ -1,7 +1,8 @@
 import numpy as np
-import random
-import torch
 import pathlib
+import random
+import time
+import torch
 
 import geodesic_shooting
 from geodesic_shooting.utils.helper_functions import lincomb, project
@@ -15,11 +16,13 @@ from nonlinear_mor.utils.versioning import get_git_hash, get_version
 
 
 class GreedyDictionaryReductor:
-    def __init__(self, fom, training_params, tol, geodesic_shooter):
+    def __init__(self, fom, training_params, tol, geodesic_shooter, log_filename='greedy_results.txt'):
         self.fom = fom
         self.training_params = training_params
         self.tol = tol
         self.geodesic_shooter = geodesic_shooter
+
+        self.log_filename = log_filename
 
         self.logger = getLogger('nonlinear_mor.GreedyDictionaryReductor')
 
@@ -39,7 +42,13 @@ class GreedyDictionaryReductor:
             summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
             summary_file.write(additional_text)
 
-    def reduce(self, max_basis_size=10, l2_prod=False, registration_params={}):
+    def _log(self, save_intermediate_results=True, filepath_prefix='', log_message=''):
+        if save_intermediate_results:
+            with open(filepath_prefix + '/' + self.log_filename, 'a') as log_file:
+                log_file.write(log_message)
+
+    def reduce(self, max_basis_size=10, l2_prod=False, registration_params={},
+               save_intermediate_results=True, filepath_prefix=''):
         if l2_prod:
             product_operator = None
         else:
@@ -47,8 +56,15 @@ class GreedyDictionaryReductor:
 
         n = len(self.training_params)
         U = []
+        U_indices= []
         V = []
         pi = [None]*n
+
+        self._log(save_intermediate_results, filepath_prefix,
+                  "============================ STARTING GREEDY PROCEDURE ============================\n")
+
+        start_time_full = time.perf_counter()
+        start_time_greedy_step = start_time_full
 
         with self.logger.block("Computing full-order solutions for training parameters ..."):
             full_solutions = [self.fom.solve(mu) for mu in self.training_params]
@@ -58,19 +74,42 @@ class GreedyDictionaryReductor:
         norms = np.array([u.norm for u in full_solutions])
         k_opt = np.argmax(norms)
         U.append(full_solutions[k_opt])
+        U_indices.append(k_opt)
         self.logger.info(f"Worst approximated parameter is mu={self.training_params[k_opt]} ...")
+
+        self._log(save_intermediate_results, filepath_prefix,
+                  f"---------------------------- GREEDY STEP {k} ----------------------------\n"
+                  f"Selected parameter: mu={self.training_params[k_opt]} (number: {k_opt})\n")
 
         with self.logger.block("Registering all snapshots ..."):
             self.logger.info(f"Need to register {n} snapshots ...")
+            start_time_registration = start_time_full
             vs = [None]*n
+            vs_pod = []
             for i in range(n):
                 self.logger.info(f"Running registration number {i} out of {n} ...")
-                vs[i] = self.geodesic_shooter.register(U[k], full_solutions[i], **registration_params, return_all=False)
+                vs[i] = self.geodesic_shooter.register(U[k], full_solutions[i],
+                                                       **registration_params, return_all=False)
+                if self._error(full_solutions[i], U[k], vs[i]) <= self.tol:
+                    vs_pod.append(vs[i])
+
+            self._log(save_intermediate_results, filepath_prefix,
+                      f"\nRegistration of {n} snapshots took {time.perf_counter() - start_time_registration} seconds\n")
+
+        self.logger.info(f"Selected {len(vs_pod)} vector fields for computing POD ...")
+        self._log(save_intermediate_results, filepath_prefix,
+                  f"Number of selected vector fields for computing POD: {len(vs_pod)}\n")
 
         with self.logger.block("Computing POD of vector fields ..."):
-            V_k, singular_values = pod(vs, num_modes=min(max_basis_size, n-1), product_operator=product_operator,
-                                       return_singular_values='all')
+            start_time_pod = time.perf_counter()
+            V_k, singular_values = pod(vs_pod, num_modes=min(max_basis_size, n-1, len(vs_pod)),
+                                       product_operator=product_operator, return_singular_values='all')
             V.append(V_k)
+
+            self._log(save_intermediate_results, filepath_prefix,
+                      f"Computing POD took {time.perf_counter() - start_time_pod} seconds\n"
+                      f"Number of vector field modes obtained by POD: {len(V_k)}\n"
+                      f"All singular values in POD of vector fields:\n\t{singular_values}\n")
 
         with self.logger.block("Initializing assignment and computing reduced coefficients ..."):
             vs_red = [None]*n
@@ -78,12 +117,25 @@ class GreedyDictionaryReductor:
                 pi[i] = k
                 vs_red[i] = project(V_k, vs[i])
 
+            self._log(save_intermediate_results, filepath_prefix,
+                      f"Current assignment to local models:\n\t{pi}\n")
+
         with self.logger.block("Computing errors and set of solutions that are insufficiently approximated ..."):
+            start_time_error_computation = time.perf_counter()
             errors = [self._error(full_solutions[i], U[k], lincomb(V_k, vs_red[i])) for i in range(n)]
             Z = [i for i in range(n) if errors[i] > self.tol]
 
+            self._log(save_intermediate_results, filepath_prefix,
+                      f"Computing errors took {time.perf_counter() - start_time_error_computation} seconds\n"
+                      f"Errors after greedy step:\n\t{errors}\n"
+                      f"Elements insufficiently approximated:\n\t{Z}\n")
+
+        self._log(save_intermediate_results, filepath_prefix,
+                  f"\nFull greedy step took {time.perf_counter() - start_time_greedy_step} seconds\n")
+
         len_Z = len(Z)
         while len_Z > 0:
+            start_time_greedy_step = time.perf_counter()
             k = k + 1
             with self.logger.block(f"Greedy step number {k} ..."):
                 self.logger.info("Computing worst approximated parameter ...")
@@ -92,9 +144,14 @@ class GreedyDictionaryReductor:
                 U.append(full_solutions[k_opt])
                 self.logger.info(f"Worst approximated parameter is mu={self.training_params[k_opt]} ...")
 
+                self._log(save_intermediate_results, filepath_prefix,
+                          f"\n---------------------------- GREEDY STEP {k} ----------------------------\n"
+                          f"Selected parameter: mu={self.training_params[k_opt]} (number: {k_opt})\n")
+
                 vs_pod = []
                 with self.logger.block("Registering all snapshots ..."):
                     self.logger.info(f"Need to register {len(Z)} snapshots ...")
+                    start_time_registration = start_time_full
                     for count, i in enumerate(Z):
                         self.logger.info(f"Running registration number {count} out of {len(Z)} ...")
                         vs[i] = self.geodesic_shooter.register(U[k], full_solutions[i],
@@ -102,13 +159,28 @@ class GreedyDictionaryReductor:
                         if self._error(full_solutions[i], U[k], vs[i]) <= self.tol:
                             vs_pod.append(vs[i])
 
+                    self._log(save_intermediate_results, filepath_prefix,
+                              f"\nRegistration of {n} snapshots took {time.perf_counter() - start_time_registration} seconds\n")
+
+                self.logger.info(f"Selected {len(vs_pod)} vector fields for computing POD ...")
+
+                self._log(save_intermediate_results, filepath_prefix,
+                          f"Number of selected vector fields for computing POD: {len(vs_pod)}\n")
+
                 with self.logger.block("Computing POD of vector fields ..."):
-                    V_k, singular_values = pod(vs_pod, num_modes=min(max_basis_size, len_Z),
+                    start_time_pod = time.perf_counter()
+                    V_k, singular_values = pod(vs_pod, num_modes=min(max_basis_size, len_Z, len(vs_pod)),
                                                product_operator=product_operator, return_singular_values='all')
                     V.append(V_k)
 
+                    self._log(save_intermediate_results, filepath_prefix,
+                              f"Computing POD took {time.perf_counter() - start_time_pod} seconds\n"
+                              f"Number of vector field modes obtained by POD: {len(V_k)}\n"
+                              f"All singular values in POD of vector fields:\n\t{singular_values}\n")
+
                 with self.logger.block("Computing reduced coefficients, "
                                        "errors and performing updates if necessary ..."):
+                    start_time_error_computation = time.perf_counter()
                     for i in Z:
                         vs_red_tilde = project(V_k, vs[i])
                         new_error = self._error(full_solutions[i], U[k], lincomb(V_k, vs_red_tilde))
@@ -117,20 +189,51 @@ class GreedyDictionaryReductor:
                             pi[i] = k
                             vs_red[i] = vs_red_tilde
 
+                    self._log(save_intermediate_results, filepath_prefix,
+                              f"Computing errors took {time.perf_counter() - start_time_error_computation} seconds\n"
+                              f"Current assignment to local models:\n\t{pi}\n")
+
                 with self.logger.block("Computing set of solutions that are insufficiently approximated ..."):
                     Z = [i for i in range(n) if errors[i] > self.tol]
                     assert len(Z) < len_Z
                     len_Z = len(Z)
 
+                    self._log(save_intermediate_results, filepath_prefix,
+                              f"Errors after greedy step:\n\t{errors}\n"
+                              f"Elements insufficiently approximated:\n\t{Z}\n")
+
+            self._log(save_intermediate_results, filepath_prefix,
+                      f"\nFull greedy step took {time.perf_counter() - start_time_greedy_step} seconds\n")
+
         N = k + 1
+        assert len(U_indices) == len(U) == N
+
+        self._log(save_intermediate_results, filepath_prefix,
+                  f"\n\n============================ FINAL RESULTS ============================\n"
+                  f"Computed the following {N} basis functions with associated training samples:\n")
+        for k, index in enumerate(U_indices):
+            list_associated_parameters = [j for j in range(n) if pi[j] == k]
+            self._log(save_intermediate_results, filepath_prefix,
+                      "-----------------------------------------------------\n"
+                      f"\tIn greedy step {k} the parameter number {index} was selected "
+                      f"(mu={self.training_params[index]}):\n"
+                      f"\t\tThe following {len(list_associated_parameters)} parameters are associated to this basis element:\n\t\t"
+                      ", ".join(f"i (mu={self.training_params[i]})" for i in list_associated_parameters))
+
+        start_time_regression = time.perf_counter()
         with self.logger.block(f"Solving {N} regression problems ..."):
             Psis = []
             for k in range(N):
                 self.logger.info(f"Running fitting process number {k} out of {N} ...")
                 T_k = [(self.training_params[i], vs_red[i]) for i in range(n) if pi[i] == k]
-                print(f"T_k: {T_k}")
                 Psi_k = self._fit_regression_model(T_k)
                 Psis.append(Psi_k)
+
+            self._log(save_intermediate_results, filepath_prefix,
+                      f"\n\nRegression took {time.perf_counter() - start_time_regression} seconds\n")
+
+        self._log(save_intermediate_results, filepath_prefix,
+                  f"\n\nFull reduction procedure took {time.perf_counter() - start_time_full} seconds\n")
 
         return self.build_rom(U, V, Psis, pi)
 
