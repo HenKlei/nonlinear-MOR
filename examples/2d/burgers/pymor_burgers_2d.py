@@ -70,6 +70,8 @@ def main(grid: int = Option(60, help='Use grid with (2*NI)*NI elements.'),
     pathlib.Path(outputs_filepath).mkdir(parents=True, exist_ok=True)
     with open(f'{outputs_filepath}/output_dict_rom', 'wb') as output_file:
         pickle.dump(output_dict, output_file)
+    with open(f'{outputs_filepath}/full_velocity_fields', 'wb') as output_file:
+        pickle.dump(output_dict['full_velocity_fields'], output_file)
 
     results_filepath = f'{filepath_prefix}/results'
     pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)

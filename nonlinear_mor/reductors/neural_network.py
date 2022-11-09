@@ -30,21 +30,22 @@ class NonlinearNeuralNetworkReductor:
 
         self.logger = getLogger('nonlinear_mor.NonlinearNeuralNetworkReductor')
 
-    def write_summary(self, filepath_prefix='', registration_params={}, additional_text=""):
-        pathlib.Path(filepath_prefix).mkdir(parents=True, exist_ok=True)
-        with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
-            summary_file.write('========================================================\n')
-            summary_file.write('Git hash: ' + get_git_hash() + '\n')
-            summary_file.write('========================================================\n')
-            summary_file.write('FOM: ' + str(self.fom) + '\n')
-            summary_file.write('Reductor: ' + str(self.__class__.__name__) + '\n')
-            summary_file.write('Geodesic Shooting:\n')
-            summary_file.write('------------------\n')
-            summary_file.write('Version: ' + get_version(geodesic_shooting) + '\n')
-            summary_file.write(str(self.geodesic_shooter) + '\n')
-            summary_file.write('------------------\n')
-            summary_file.write('Registration parameters: ' + str(registration_params) + '\n')
-            summary_file.write(additional_text)
+    def create_summary(self, registration_params={}):
+        summary = '========================================================\n'
+        summary += 'Git hash of nonlinear_mor-module: ' + get_git_hash() + '\n'
+        summary += '========================================================\n'
+        summary += 'FOM: ' + str(self.fom) + '\n'
+        summary += 'Reductor: ' + str(self.__class__.__name__) + '\n'
+        summary += 'Geodesic Shooting:\n'
+        summary += '------------------\n'
+        summary += 'Version: ' + get_version(geodesic_shooting) + '\n'
+        summary += str(self.geodesic_shooter) + '\n'
+        summary += '------------------\n'
+        summary += 'Registration parameters: ' + str(registration_params) + '\n'
+        summary += '------------------\n'
+        summary += 'Reference parameter: ' + str(self.reference_parameter) + '\n'
+        summary += 'Training parameters (' + str(len(self.training_set)) + '): ' + str(self.training_set) + '\n'
+        return summary
 
     def compute_full_solutions(self, full_solutions_file=None):
         if full_solutions_file:
@@ -110,10 +111,10 @@ class NonlinearNeuralNetworkReductor:
                                                 filepath_prefix=filepath_prefix))
         return full_velocity_fields
 
-    def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10, save_intermediate_results=True,
-               registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20], training_params={},
-               num_workers=1, full_solutions_file=None, full_velocity_fields_file=None, reuse_vector_fields=True,
-               filepath_prefix=''):
+    def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10,
+               save_intermediate_results=True, registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20],
+               training_params={}, num_workers=1, full_solutions_file=None, full_velocity_fields_file=None,
+               reuse_vector_fields=True, filepath_prefix=''):
         assert isinstance(restarts, int) and restarts > 0
 
         with self.logger.block("Computing full solutions ..."):

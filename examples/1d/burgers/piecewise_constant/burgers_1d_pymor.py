@@ -8,27 +8,74 @@ import pathlib
 from geodesic_shooting.core import ScalarFunction
 
 from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor as NonlinearReductor
-from nonlinear_mor.models import AnalyticalModel
+from nonlinear_mor.models import WrappedpyMORModel
+
+from pymor.analyticalproblems.elliptic import StationaryProblem
+from pymor.analyticalproblems.domaindescriptions import LineDomain, CircleDomain
+from pymor.analyticalproblems.instationary import InstationaryProblem
+from pymor.analyticalproblems.functions import ConstantFunction, ExpressionFunction
+from pymor.discretizers.builtin import discretize_instationary_fv
 
 
-def exact_solution(x, *, mu=0.25):
-    s_l = 1.5 * mu
-    s_m = mu
-    s_r = 0.5 * mu
-    t_intersection = 0.25 / (s_l - s_r)
-    return ScalarFunction(data=(2. * (x[..., 1] <= t_intersection) * (0.25 + s_l * x[..., 1] - x[..., 0] >= 0.)
-                                + (2. * (x[..., 1] > t_intersection)
-                                   * (0.25 + (s_l - s_m) * t_intersection + s_m * x[..., 1] - x[..., 0] >= 0.))
-                                + (1. * (0.25 + s_l * x[..., 1] - x[..., 0] < 0.)
-                                   * (0.5 + s_r * x[..., 1] - x[..., 0] > 0.))))
+def burgers_problem(circle=False, parameter_range=(.25, 1.5)):
+    """One-dimensional Burgers-type problem.
+
+    The problem is to solve ::
+        ∂_t u(x, t, μ)  +  ∂_x (v * u(x, t, μ)^μ) = 0
+                                       u(x, 0, μ) = u_0(x)
+    for u with t in [0, 0.3] and x in [0, 2].
+
+    Parameters
+    ----------
+    circle
+        If `True`, impose periodic boundary conditions. Otherwise Dirichlet left,
+        outflow right.
+    parameter_range
+        The interval in which μ is allowed to vary.
+    """
+
+    initial_data = ExpressionFunction('0.25 * (x[0] < -.75) + 1. * (-.75 <= x[0]) * (x[0] <= -.25)', 1)
+    dirichlet_data = ConstantFunction(dim_domain=1, value=.25)
+
+    return InstationaryProblem(
+
+        StationaryProblem(
+            domain=CircleDomain([-1, 1]) if circle else LineDomain([-1, 1], right=None),
+
+            dirichlet_data=dirichlet_data,
+
+            rhs=None,
+
+            nonlinear_advection=ExpressionFunction('v[0] * x**2 / 2.',
+                                                   1, {'v': 1}),
+
+            nonlinear_advection_derivative=ExpressionFunction('v[0] * x',
+                                                              1, {'v': 1}),
+        ),
+
+        T=2.,
+
+        initial_data=initial_data,
+
+        parameter_ranges={'v': parameter_range},
+
+        name=f"burgers_problem({circle})"
+    )
 
 
-def create_fom(N_X, N_T):
-    return AnalyticalModel(exact_solution, n_x=N_X, n_t=N_T, name='Analytical Burgers Model')
+def create_fom(nx, nt):
+    problem = burgers_problem()
+    model, _ = discretize_instationary_fv(
+        problem,
+        diameter=2 / nx,
+        num_flux='engquist_osher',
+        nt=nt
+    )
+    return WrappedpyMORModel(model, spatial_shape=(nx, ), name='pyMOR Burgers 1d Model')
 
 
 def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
-         N_T: int = Option(100, help='Number of pixels in time-direction'),
+         N_T: int = Option(150, help='Number of pixels in time-direction'),
          N_train: int = Option(50, help='Number of training parameters'),
          reference_parameter: float = Option(0.25, help='Reference parameter'),
          alpha: float = Option(100., help='Alpha'),
@@ -73,6 +120,8 @@ def main(N_X: int = Option(100, help='Number of pixels in x-direction'),
     pathlib.Path(outputs_filepath).mkdir(parents=True, exist_ok=True)
     with open(f'{outputs_filepath}/output_dict_rom', 'wb') as output_file:
         pickle.dump(output_dict, output_file)
+    with open(f'{outputs_filepath}/full_velocity_fields', 'wb') as output_file:
+        pickle.dump(output_dict['full_velocity_fields'], output_file)
 
     results_filepath = f'{filepath_prefix}/results'
     pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)
