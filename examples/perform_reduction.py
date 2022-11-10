@@ -1,5 +1,4 @@
 import ast
-import importlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
@@ -9,20 +8,9 @@ import time
 from typer import Argument, Option, run
 from typing import List
 
-from geodesic_shooting.core import ScalarFunction
-
 from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor as NonlinearReductor
-from nonlinear_mor.models import AnalyticalModel
 
-
-def load_full_order_model(example, spatial_shape, num_time_steps, additional_parameters={}):
-    try:
-        imported_module = importlib.import_module(example)
-        create_model = getattr(imported_module, 'create_model')
-        fom = create_model(spatial_shape, num_time_steps, **additional_parameters)
-        return fom
-    except Exception as e:
-        raise e
+from load_model import load_full_order_model
 
 
 def main(example: str = Argument(..., help='For instance example="1d.burgers.piecewise_constant.analytical"'),
@@ -64,6 +52,8 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
     reductor_summary = reductor.create_summary(registration_params=registration_params)
     fom_summary = fom.create_summary()
     reduction_summary = ('Maximum dimension of the reduced basis: ' + str(max_reduced_basis_size) + '\n' +
+                         'Number of training parameters: ' + str(num_training_parameters) + '\n' +
+                         'Parameter sampling mode: ' + str(sampling_mode) + '\n' +
                          'Number of training restarts in neural network training: ' +
                          str(neural_network_training_restarts) + '\n' +
                          'Hidden layers of neural network: ' + str(hidden_layers) + '\n' +
