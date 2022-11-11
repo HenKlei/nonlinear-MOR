@@ -1,5 +1,5 @@
 import numpy as np
-from functools import partial
+import pickle
 
 from geodesic_shooting.core import ScalarFunction
 

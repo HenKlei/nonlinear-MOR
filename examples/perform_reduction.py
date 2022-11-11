@@ -29,8 +29,19 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
          hidden_layers: List[int] = Option([20, 20, 20], help=''),
          full_vector_fields_filepath_prefix: str = Option(None, help='Filepath prefix for full vector fields file')):
 
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    filepath_prefix = f'results_nonlinear_reductor_{timestr}'
+    pathlib.Path(filepath_prefix).mkdir(parents=True, exist_ok=True)
+
     spatial_shape = tuple(spatial_shape)
     fom = load_full_order_model(example, spatial_shape, num_time_steps, additional_parameters)
+
+    full_order_model_filepath = f'{filepath_prefix}/full_order_model'
+    pathlib.Path(full_order_model_filepath).mkdir(parents=True, exist_ok=True)
+    fom_dictionary = {'example': example, 'spatial_shape': spatial_shape,
+                      'num_time_steps': num_time_steps, 'additional_parameters': additional_parameters}
+    with open(f'{full_order_model_filepath}/model.pickle', 'wb') as fom_file:
+        pickle.dump(fom_dictionary, fom_file)
 
     parameters = fom.parameter_space.sample(num_training_parameters, sampling_mode)
 
@@ -38,13 +49,10 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
     registration_params = {'sigma': sigma}
     basis_sizes = range(1, max_reduced_basis_size + 1)
 
-    timestr = time.strftime("%Y%m%d-%H%M%S")
-    filepath_prefix = f'results_nonlinear_reductor_{timestr}'
-
     if full_vector_fields_filepath_prefix:
-        full_velocity_fields_file = f'{full_vector_fields_filepath_prefix}/outputs/full_velocity_fields'
+        full_vector_fields_file = f'{full_vector_fields_filepath_prefix}/outputs/full_vector_fields'
     else:
-        full_velocity_fields_file = None
+        full_vector_fields_file = None
 
     reductor = NonlinearReductor(fom, parameters, reference_parameter,
                                  gs_smoothing_params=gs_smoothing_params)
@@ -59,7 +67,6 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
                          'Hidden layers of neural network: ' + str(hidden_layers) + '\n' +
                          'L2-product used: ' + str(l2_prod) + '\n')
 
-    pathlib.Path(filepath_prefix).mkdir(parents=True, exist_ok=True)
     with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
         summary_file.write('Example: ' + example)
         summary_file.write('\n\n========================================================\n\n')
@@ -71,7 +78,7 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
 
     roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, l2_prod=l2_prod, return_all=True,
                                         restarts=neural_network_training_restarts,
-                                        full_velocity_fields_file=full_velocity_fields_file,
+                                        full_vector_fields_file=full_vector_fields_file,
                                         registration_params=registration_params, hidden_layers=hidden_layers,
                                         filepath_prefix=filepath_prefix)
 
@@ -79,14 +86,17 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
     pathlib.Path(outputs_filepath).mkdir(parents=True, exist_ok=True)
     with open(f'{outputs_filepath}/output_dict_rom', 'wb') as output_file:
         pickle.dump(output_dict, output_file)
-    with open(f'{outputs_filepath}/full_velocity_fields', 'wb') as output_file:
-        pickle.dump(output_dict['full_velocity_fields'], output_file)
+    with open(f'{outputs_filepath}/full_vector_fields', 'wb') as output_file:
+        pickle.dump(output_dict['full_vector_fields'], output_file)
+
+    full_order_model_filepath = f'{filepath_prefix}/full_order_model/'
+    fom.save_model(full_order_model_filepath)
 
     for basis_size in basis_sizes:
         rom = roms[basis_size-1][0]
-        models_filepath = f'{filepath_prefix}/reduced_models/basis_size_{basis_size}'
-        pathlib.Path(models_filepath).mkdir(parents=True, exist_ok=True)
-        rom.save_model(models_filepath)
+        reduced_models_filepath = f'{filepath_prefix}/reduced_models/basis_size_{basis_size}'
+        pathlib.Path(reduced_models_filepath).mkdir(parents=True, exist_ok=True)
+        rom.save_model(reduced_models_filepath)
 
 
 if __name__ == "__main__":
