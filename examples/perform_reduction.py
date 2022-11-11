@@ -1,9 +1,6 @@
 import ast
-import matplotlib.pyplot as plt
-import numpy as np
 import pathlib
 import pickle
-import tikzplotlib
 import time
 from typer import Argument, Option, run
 from typing import List
