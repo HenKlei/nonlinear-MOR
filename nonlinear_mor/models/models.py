@@ -38,9 +38,9 @@ class AnalyticalModel(Model):
     def create_summary(self):
         return (str(self) + ':\n' +
                 'Spatial extend: ' + str(self.spatial_extend) + '\n' +
-                'Spatial shape: ' + str(self.spatial_shape) +
-                '\n' + 'Temporal extend: ' + str(self.temporal_extend) + '\n' + 'Temporal shape: ' +
-                str(self.spatial_shape))
+                'Spatial shape: ' + str(self.spatial_shape) + '\n' +
+                'Temporal extend: ' + str(self.temporal_extend) + '\n' +
+                'Number of time steps: ' + str(self.num_time_steps))
 
     def solve(self, mu):
         linspace_list = [np.linspace(s_min, s_max, num) for (s_min, s_max), num in zip(self.spatial_extend,
@@ -60,6 +60,11 @@ class WrappedpyMORModel(Model):
         super().__init__(spatial_shape, num_time_steps, name='WrappedpyMORModel')
 
         self.model = model
+
+    def create_summary(self):
+        return (str(self) + ':\n' +
+                'Spatial shape: ' + str(self.spatial_shape) + '\n' +
+                'Number of time steps: ' + str(self.num_time_steps))
 
     def solve(self, mu):
         with self.logger.block(f"Calling pyMOR to solve for mu={mu} ..."):

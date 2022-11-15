@@ -6,7 +6,7 @@ import torch
 from geodesic_shooting import ReducedGeodesicShooting
 from geodesic_shooting.utils.helper_functions import lincomb
 
-from nonlinear_mor.utils.torch.neural_networks import *
+from nonlinear_mor.utils.torch.neural_networks import *  # noqa: F401,F403
 
 
 class ReducedSpacetimeModel:

@@ -1,6 +1,8 @@
 import torch.nn as nn
 import torch.nn.functional as f
 
+from nonlinear_mor.utils.logger import getLogger
+
 
 class BaseFullyConnectedNetwork(nn.Module):
     """Base class for fully-connected neural networks."""
@@ -50,16 +52,18 @@ class FullyConnectedNetwork(BaseFullyConnectedNetwork):
 
         self.activation_function = activation_function
 
+        self.logger = getLogger('nonlinear_mor.FullyConnectedNetwork')
+
     def forward(self, x):
         for i in range(0, self.number_of_layers - 2):
             x = self.activation_function(self.linear_layers[i](x))
         return self.linear_layers[self.number_of_layers-2](x)
 
     def print_parameters(self):
-        print("=> Parameters of neural network:")
-        print(f'Overall layers: {int(self.number_of_layers)}')
-        print(f'Overall neurons: {int(sum(self.layers_sizes))}')
-        print(f'Input neurons: {int(self.input_size)}')
-        print(f'Output neurons: {int(self.output_size)}')
-        print("Architecture:")
-        print(self)
+        self.logger.info("=> Parameters of neural network:")
+        self.logger.info(f'Overall layers: {int(self.number_of_layers)}')
+        self.logger.info(f'Overall neurons: {int(sum(self.layers_sizes))}')
+        self.logger.info(f'Input neurons: {int(self.input_size)}')
+        self.logger.info(f'Output neurons: {int(self.output_size)}')
+        self.logger.info("Architecture:")
+        self.logger.info(self)
