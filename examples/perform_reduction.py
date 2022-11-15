@@ -1,6 +1,6 @@
 import ast
 import pathlib
-import pickle
+import dill as pickle
 import time
 from typer import Argument, Option, run
 from typing import List
@@ -85,9 +85,6 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
         pickle.dump(output_dict, output_file)
     with open(f'{outputs_filepath}/full_vector_fields', 'wb') as output_file:
         pickle.dump(output_dict['full_vector_fields'], output_file)
-
-    full_order_model_filepath = f'{filepath_prefix}/full_order_model/'
-    fom.save_model(full_order_model_filepath)
 
     for basis_size in basis_sizes:
         rom = roms[basis_size-1][0]

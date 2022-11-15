@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import pathlib
-import pickle
+import dill as pickle
 import tikzplotlib
 import time
 from typer import Argument, Option, run
