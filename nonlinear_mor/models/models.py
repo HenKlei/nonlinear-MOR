@@ -56,10 +56,10 @@ class AnalyticalModel(Model):
 
 
 class WrappedpyMORModel(Model):
-    def __init__(self, spatial_shape=(100, ), num_time_steps=100, model=None):
+    def __init__(self, spatial_shape=(100, ), num_time_steps=100, model=None, parameter_space=None):
         super().__init__(spatial_shape, num_time_steps, name='WrappedpyMORModel')
-
         self.model = model
+        self.parameter_space = parameter_space
 
     def create_summary(self):
         return (str(self) + ':\n' +
