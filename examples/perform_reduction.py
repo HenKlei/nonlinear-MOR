@@ -16,7 +16,7 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
          additional_parameters: str = Option("{}", help='', callback=ast.literal_eval),
          num_training_parameters: int = Option(50, help='Number of training parameters'),
          sampling_mode: str = Option('uniform', help=''),
-         reference_parameter: float = Option(0.25, help='Reference parameter'),
+         reference_parameter: str = Option("0.25", help='Reference parameter', callback=ast.literal_eval),
          alpha: float = Option(100., help='Alpha'),
          exponent: int = Option(2, help='Exponent'),
          sigma: float = Option(0.1, help='Sigma'),
