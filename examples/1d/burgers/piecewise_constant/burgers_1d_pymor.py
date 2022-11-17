@@ -25,13 +25,13 @@ def burgers_problem(circle=False, parameter_range=(.25, 1.5)):
         The interval in which μ is allowed to vary.
     """
 
-    initial_data = ExpressionFunction('0.25 * (x[0] < -.75) + 1. * (-.75 <= x[0]) * (x[0] <= -.25)', 1)
-    dirichlet_data = ConstantFunction(dim_domain=1, value=.25)
+    initial_data = ExpressionFunction('2. * (x[0] <= .25) + 1. * (.25 < x[0]) * (x[0] <= .5)', 1)
+    dirichlet_data = ConstantFunction(dim_domain=1, value=2.)
 
     return InstationaryProblem(
 
         StationaryProblem(
-            domain=CircleDomain([-1, 1]) if circle else LineDomain([-1, 1], right=None),
+            domain=CircleDomain([0, 1]) if circle else LineDomain([0, 1], right=None),
 
             dirichlet_data=dirichlet_data,
 
@@ -44,7 +44,7 @@ def burgers_problem(circle=False, parameter_range=(.25, 1.5)):
                                                               1, {'v': 1}),
         ),
 
-        T=2.,
+        T=1.,
 
         initial_data=initial_data,
 
@@ -59,7 +59,7 @@ def create_model(spatial_shape, num_time_steps):
     problem = burgers_problem()
     model, _ = discretize_instationary_fv(
         problem,
-        diameter=2 / spatial_shape[0],
+        diameter=1 / spatial_shape[0],
         num_flux='engquist_osher',
         nt=num_time_steps
     )
