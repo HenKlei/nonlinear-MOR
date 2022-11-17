@@ -44,6 +44,7 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
 
     gs_smoothing_params = {'alpha': alpha, 'exponent': exponent}
     registration_params = {'sigma': sigma}
+    assert max_reduced_basis_size <= num_training_parameters
     basis_sizes = range(1, max_reduced_basis_size + 1)
 
     if full_vector_fields_filepath_prefix:
