@@ -1,11 +1,11 @@
-from nonlinear_mor.models import WrappedpyMORModel
-from nonlinear_mor.utils.parameters import CubicParameterSpace
-
 from pymor.analyticalproblems.elliptic import StationaryProblem
 from pymor.analyticalproblems.domaindescriptions import LineDomain, CircleDomain
 from pymor.analyticalproblems.instationary import InstationaryProblem
 from pymor.analyticalproblems.functions import ConstantFunction, ExpressionFunction
 from pymor.discretizers.builtin import discretize_instationary_fv
+
+from nonlinear_mor.models import WrappedpyMORModel
+from nonlinear_mor.utils.parameters import CubicParameterSpace
 
 
 def burgers_problem(circle=False, parameter_range=(.25, 1.5)):
