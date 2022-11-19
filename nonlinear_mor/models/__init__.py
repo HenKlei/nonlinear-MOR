@@ -1,4 +1,4 @@
-from .models import AnalyticalModel, WrappedpyMORModel
+from .models import AnalyticalModel, WrappedpyMORModel, WrappedPyClawModel
 
 from .reduced_models import ReducedSpacetimeModel
 
