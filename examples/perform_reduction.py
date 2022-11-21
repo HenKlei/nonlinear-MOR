@@ -5,7 +5,7 @@ import time
 from typer import Argument, Option, run
 from typing import List
 
-from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor as NonlinearReductor
+from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor
 
 from load_model import load_full_order_model
 
@@ -63,8 +63,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     else:
         full_vector_fields_file = None
 
-    reductor = NonlinearReductor(fom, parameters, reference_parameter,
-                                 gs_smoothing_params=gs_smoothing_params)
+    reductor = NonlinearNeuralNetworkReductor(fom, parameters, reference_parameter,
+                                              gs_smoothing_params=gs_smoothing_params)
 
     if write_results:
         reductor_summary = reductor.create_summary(registration_params=registration_params)
