@@ -9,12 +9,14 @@ from geodesic_shooting.utils.reduced import pod
 from load_model import load_full_order_model
 
 
-def main(example: str = Argument(..., help='For instance example="1d.burgers.piecewise_constant.analytical"'),
-         spatial_shape: List[int] = Argument(..., help=''),
-         num_time_steps: int = Option(100, help='Number of pixels in time-direction'),
-         additional_parameters: str = Option("{}", help='', callback=ast.literal_eval),
+def main(example: str = Argument(..., help='Path to the example to execute, for instance '
+                                           'example="1d.burgers.piecewise_constant.analytical"'),
+         spatial_shape: List[int] = Argument(..., help='Number of unknowns in the spatial coordinate directions'),
+         num_time_steps: int = Option(100, help='Number of time steps in the high-fidelity solutions'),
+         additional_parameters: str = Option('{}', help='Additional parameters to pass to the full-order model',
+                                             callback=ast.literal_eval),
          num_training_parameters: int = Option(50, help='Number of training parameters'),
-         sampling_mode: str = Option('uniform', help='')):
+         sampling_mode: str = Option('uniform', help='Sampling mode for sampling the training parameters')):
 
     spatial_shape = tuple(spatial_shape)
     fom = load_full_order_model(example, spatial_shape, num_time_steps, additional_parameters)

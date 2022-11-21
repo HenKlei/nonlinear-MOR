@@ -10,9 +10,9 @@ from nonlinear_mor.models import ReducedSpacetimeModel
 from load_model import load_full_order_model
 
 
-def main(filepath: str = Argument(..., help=''),
+def main(filepath: str = Argument(..., help='Path to the folder containing the reduction results'),
          num_test_parameters: int = Option(50, help='Number of test parameters'),
-         sampling_mode: str = Option('uniform', help=''),
+         sampling_mode: str = Option('uniform', help='Sampling mode for sampling the training parameters'),
          max_reduced_basis_size: int = Option(50, help='Maximum dimension of reduced basis for vector fields')):
 
     with open(f'{filepath}/full_order_model/model.pickle', 'rb') as fom_file:
