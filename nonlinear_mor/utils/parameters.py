@@ -1,4 +1,5 @@
 import numpy as np
+import numbers
 
 from nonlinear_mor.utils.logger import getLogger
 
@@ -6,6 +7,12 @@ from nonlinear_mor.utils.logger import getLogger
 class ParameterSpace:
     def __init__(self):
         pass
+
+    def __contains__(self, mu):
+        raise NotImplementedError
+
+    def sample(self, num_samples, mode):
+        raise NotImplementedError
 
 
 class CubicParameterSpace(ParameterSpace):
@@ -15,6 +22,15 @@ class CubicParameterSpace(ParameterSpace):
         self.dim = len(self.extends)
 
         self.logger = getLogger('nonlinear_mor.CubicParameterSpace')
+
+    def __contains__(self, mu):
+        if isinstance(mu, numbers.Number):
+            if self.dim != 1:
+                return False
+            return self.extends[0][0] <= mu <= self.extends[0][1]
+        if mu.shape != (self.dim, ):
+            return False
+        return all(self.extends[i][0] <= mu[i] <= self.extends[i][1] for i in range(self.dim))
 
     def sample(self, num_samples=1, mode='uniform'):
         assert mode in ['uniform']

@@ -13,12 +13,13 @@ from nonlinear_mor.utils.logger import getLogger
 
 
 class Model:
-    def __init__(self, spatial_shape, num_time_steps, name=''):
+    def __init__(self, spatial_shape, num_time_steps, parameter_space, name=''):
         assert isinstance(spatial_shape, tuple)
         assert isinstance(num_time_steps, int) and num_time_steps > 0
         self.spatial_shape = spatial_shape
         self.dim = len(self.spatial_shape)
         self.num_time_steps = num_time_steps
+        self.parameter_space = parameter_space
         self.name = name
 
         self.logger = getLogger(f'nonlinear_mor.{self.name}')
@@ -34,13 +35,12 @@ class Model:
 
 
 class AnalyticalModel(Model):
-    def __init__(self, spatial_shape=(100, ), num_time_steps=100, exact_solution=None,
-                 spatial_extend=[(0., 1.), ], temporal_extend=(0., 1.), parameter_space=None):
-        super().__init__(spatial_shape, num_time_steps, name='AnalyticalModel')
+    def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None, exact_solution=None,
+                 spatial_extend=[(0., 1.), ], temporal_extend=(0., 1.)):
+        super().__init__(spatial_shape, num_time_steps, parameter_space, name='AnalyticalModel')
         self.exact_solution = exact_solution
         self.spatial_extend = spatial_extend
         self.temporal_extend = temporal_extend
-        self.parameter_space = parameter_space
 
     def create_summary(self):
         return (str(self) + ':\n' +
@@ -50,6 +50,8 @@ class AnalyticalModel(Model):
                 'Number of time steps: ' + str(self.num_time_steps))
 
     def solve(self, mu):
+        assert mu in self.parameter_space
+
         linspace_list = [np.linspace(s_min, s_max, num) for (s_min, s_max), num in zip(self.spatial_extend,
                                                                                        self.spatial_shape)]
         temp = np.meshgrid(*linspace_list, np.linspace(self.temporal_extend[0], self.temporal_extend[1],
@@ -63,10 +65,9 @@ class AnalyticalModel(Model):
 
 
 class WrappedpyMORModel(Model):
-    def __init__(self, spatial_shape=(100, ), num_time_steps=100, model=None, parameter_space=None):
-        super().__init__(spatial_shape, num_time_steps, name='WrappedpyMORModel')
+    def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None, model=None):
+        super().__init__(spatial_shape, num_time_steps, parameter_space, name='WrappedpyMORModel')
         self.model = model
-        self.parameter_space = parameter_space
 
     def create_summary(self):
         return (str(self) + ':\n' +
@@ -74,6 +75,8 @@ class WrappedpyMORModel(Model):
                 'Number of time steps: ' + str(self.num_time_steps))
 
     def solve(self, mu):
+        assert mu in self.parameter_space
+
         with self.logger.block(f"Calling pyMOR to solve for mu={mu} ..."):
             u = self.model.solve(mu).to_numpy()
 
@@ -95,8 +98,7 @@ if PYCLAW:
     class WrappedPyClawModel(Model):
         def __init__(self, spatial_shape=(100, 100), num_time_steps=100, parameter_space=None,
                      spatial_extend=[(0., 1.), (0., 1.)], t_final=1., call_pyclaw=None):
-            super().__init__(spatial_shape, num_time_steps, name='WrappedPyClawModel')
-            self.parameter_space = parameter_space
+            super().__init__(spatial_shape, num_time_steps, parameter_space, name='WrappedPyClawModel')
             self.call_pyclaw = call_pyclaw
             lower_bounds = [x[0] for x in spatial_extend]
             upper_bounds = [x[1] for x in spatial_extend]
@@ -111,10 +113,14 @@ if PYCLAW:
                     'Number of time steps: ' + str(self.num_time_steps))
 
         def solve(self, mu):
+            assert mu in self.parameter_space
+
             with self.logger.block(f"Calling PyClaw to solve for mu={mu} ..."):
                 self.claw.frames = []
                 u = self.call_pyclaw(self.claw, self.domain, mu)
+
             assert u.shape == (self.num_time_steps, *self.spatial_shape)
+
             return ScalarFunction(data=u)
 
         def visualize(self, u):

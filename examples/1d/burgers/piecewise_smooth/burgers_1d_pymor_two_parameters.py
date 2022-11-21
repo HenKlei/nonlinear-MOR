@@ -57,4 +57,4 @@ def create_model(spatial_shape, num_time_steps):
         nt=num_time_steps
     )
     parameter_space = CubicParameterSpace([(0.25, 1.5), (1, 3)])
-    return WrappedpyMORModel(spatial_shape, num_time_steps, model, parameter_space)
+    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model)
