@@ -1,4 +1,8 @@
-from .models import AnalyticalModel, WrappedpyMORModel, WrappedPyClawModel
+from .models import AnalyticalModel, WrappedpyMORModel
+try:
+    from .models import WrappedPyClawModel
+except ImportError:
+    print("PyClaw not available.")
 
 from .reduced_models import ReducedSpacetimeModel
 
