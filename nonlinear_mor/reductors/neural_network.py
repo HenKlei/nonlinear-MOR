@@ -174,7 +174,7 @@ class NonlinearNeuralNetworkReductor:
             training_data = self.normalize(training_data)
             validation_data = self.normalize(validation_data)
 
-            layers_sizes = [self.fom.parameter_space.dim] + hidden_layers + [basis_size]
+            layers_sizes = [self.fom.parameter_space.dim] + list(hidden_layers) + [basis_size]
 
             best_ann, best_loss = self.multiple_restarts_training(training_data, validation_data, layers_sizes,
                                                                   restarts, trainer_params, training_params)
