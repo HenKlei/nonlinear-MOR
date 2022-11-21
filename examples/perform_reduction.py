@@ -10,22 +10,30 @@ from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor as NonlinearR
 from load_model import load_full_order_model
 
 
-def main(example: str = Argument(..., help='For instance example="1d.burgers.piecewise_constant.analytical"'),
-         spatial_shape: List[int] = Argument(..., help=''),
-         num_time_steps: int = Option(100, help='Number of pixels in time-direction'),
-         additional_parameters: str = Option("{}", help='', callback=ast.literal_eval),
+def main(example: str = Argument(..., help='Path to the example to execute, for instance '
+                                           'example="1d.burgers.piecewise_constant.analytical"'),
+         spatial_shape: List[int] = Argument(..., help='Number of unknowns in the spatial coordinate directions'),
+         num_time_steps: int = Option(100, help='Number of time steps in the high-fidelity solutions'),
+         additional_parameters: str = Option('{}', help='Additional parameters to pass to the full-order model',
+                                             callback=ast.literal_eval),
          num_training_parameters: int = Option(50, help='Number of training parameters'),
-         sampling_mode: str = Option('uniform', help=''),
-         reference_parameter: str = Option("0.25", help='Reference parameter', callback=ast.literal_eval),
-         alpha: float = Option(100., help='Alpha'),
-         exponent: int = Option(2, help='Exponent'),
-         sigma: float = Option(0.1, help='Sigma'),
+         sampling_mode: str = Option('uniform', help='Sampling mode for sampling the training parameters'),
+         reference_parameter: str = Option('0.25', help='Reference parameter, either a number or a list of numbers',
+                                           callback=ast.literal_eval),
+         alpha: float = Option(100., help='Registration parameter `alpha`'),
+         exponent: int = Option(2, help='Registration parameter `exponent`'),
+         sigma: float = Option(0.1, help='Registration parameter `sigma`'),
          max_reduced_basis_size: int = Option(50, help='Maximum dimension of reduced basis for vector fields'),
-         l2_prod: bool = Option(False, help=''),
+         num_workers: int = Option(1, help='Number of cores to use during registration; if greater than 1, the former '
+                                           'vector field is not reused, otherwise the former vector field is used as '
+                                           'initialization for the registration'),
+         l2_prod: bool = Option(False, help='Determines whether or not to use the L2-product as inner product for '
+                                            'orthonormalizing the vector fields'),
          neural_network_training_restarts: int = Option(25, help='Maximum number of training restarts'),
-         hidden_layers: List[int] = Option([20, 20, 20], help=''),
+         hidden_layers: List[int] = Option([20, 20, 20], help='Number of neurons in each hidden layer'),
          full_vector_fields_filepath_prefix: str = Option(None, help='Filepath prefix for full vector fields file'),
-         write_results: bool = Option(True, help='')):
+         write_results: bool = Option(True, help='Determines whether or not to write results to disc (useful during '
+                                                 'development)')):
 
     timestr = time.strftime("%Y%m%d-%H%M%S")
     filepath_prefix = f'results_nonlinear_reductor_{timestr}'
@@ -80,7 +88,7 @@ def main(example: str = Argument(..., help='For instance example="1d.burgers.pie
 
     roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, l2_prod=l2_prod, return_all=True,
                                         save_intermediate_results=write_results,
-                                        restarts=neural_network_training_restarts,
+                                        restarts=neural_network_training_restarts, num_workers=num_workers,
                                         full_vector_fields_file=full_vector_fields_file,
                                         registration_params=registration_params, hidden_layers=hidden_layers,
                                         filepath_prefix=filepath_prefix)
