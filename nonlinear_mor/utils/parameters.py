@@ -18,6 +18,8 @@ class ParameterSpace:
 class CubicParameterSpace(ParameterSpace):
     def __init__(self, extends):
         super().__init__()
+        assert len(extends) > 0
+        assert all(lower < upper for (lower, upper) in extends)
         self.extends = np.array(extends)
         self.dim = len(self.extends)
 
@@ -34,7 +36,7 @@ class CubicParameterSpace(ParameterSpace):
 
     def sample(self, num_samples=1, mode='uniform'):
         assert mode in ['uniform']
-        assert isinstance(num_samples, int) and num_samples >= 1
+        assert isinstance(num_samples, int) and num_samples > 0
 
         if mode == 'uniform':
             number_of_parameters_per_dimension = int(np.ceil(num_samples**(1/self.dim)))
