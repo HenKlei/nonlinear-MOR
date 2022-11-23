@@ -26,8 +26,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                            callback=ast.literal_eval),
          sigma: float = Option(0.1, help='Registration parameter `sigma`'),
          kernel_sigma: float = Option(1., help='Kernel parameter `sigma`'),
-         all_landmarks: bool = Option(True, help='If `True`, all landmarks are used, otherwise only a certain subset'
-                                                 '(might not be supported by every model)'),
+         all_landmarks: bool = Option(False, help='If `True`, all landmarks are used, otherwise only a certain subset'
+                                                  '(might not be supported by every model)'),
          write_results: bool = Option(True, help='Determines whether or not to write results to disc (useful during '
                                                  'development)')):
 
@@ -83,7 +83,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
 
     for mu in parameters:
         target_landmarks = get_landmarks(mu=mu, all_landmarks=all_landmarks)
-        initial_momenta = np.zeros(reference_landmarks.shape)
+        initial_momenta = None
         result = gs.register(reference_landmarks, target_landmarks, initial_momenta=initial_momenta, sigma=sigma,
                              return_all=True)
         registered_landmarks = result['registered_landmarks']
