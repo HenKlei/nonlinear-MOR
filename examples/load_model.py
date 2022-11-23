@@ -10,6 +10,7 @@ def load_full_order_model(example, spatial_shape, num_time_steps, additional_par
     except Exception as e:
         raise e
 
+
 def load_landmark_function(example):
     try:
         imported_module = importlib.import_module(example)

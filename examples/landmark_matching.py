@@ -117,7 +117,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
         fig.colorbar(vals, ax=axis)
         plot_landmark_matchings(reference_landmarks, target_landmarks, registered_landmarks, axis=axis)
         if write_results:
-            fig.savefig(f"{results_filepath}/transformed_ref_solution_with_landmarks_mu_{str(mu).replace('.', '_')}.png")
+            fig.savefig(f"{results_filepath}/transformed_ref_solution_w_landmarks_mu_{str(mu).replace('.', '_')}.png")
         plt.close(fig)
 
         fig = plt.figure()
@@ -140,7 +140,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
 
         if write_results:
             u.save(f"{results_filepath}/solution_mu_{str(mu).replace('.', '_')}.png")
-            u_ref_transformed.save(f"{results_filepath}/transformed_reference_solution_mu_{str(mu).replace('.', '_')}.png")
+            u_ref_transformed.save(f"{results_filepath}/transformed_ref_solution_mu_{str(mu).replace('.', '_')}.png")
             (u - u_ref_transformed).save(f"{results_filepath}/difference_mu_{str(mu).replace('.', '_')}.png")
 
 
