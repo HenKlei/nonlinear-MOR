@@ -8,6 +8,7 @@ import numpy as np
 from .dataset import CustomDataset
 from .progressbar import ProgressTraining
 
+from nonlinear_mor.utils.logger import getLogger
 from nonlinear_mor.utils.torch.early_stopping import SimpleEarlyStoppingScheduler
 
 
@@ -47,6 +48,8 @@ class Trainer:
         if es_scheduler:
             es_scheduler = es_scheduler(self, **parameters_es_scheduler)
         self.es_scheduler = es_scheduler
+
+        self.logger = getLogger('nonlinear_mor.Trainer')
 
     def train(self, training_data, validation_data, number_of_training_samples=100,
               number_of_epochs=1000, batch_size=25, learning_rate=None,
@@ -94,10 +97,10 @@ class Trainer:
             for group in self.optimizer.param_groups:
                 group['lr'] = learning_rate
 
-        print()
-        print('Training of neural network:')
-        print('===========================')
-        print()
+        self.logger.info('')
+        self.logger.info('Training of neural network:')
+        self.logger.info('===========================')
+        self.logger.info('')
 
         if type(self.optimizer) == optim.LBFGS:
             batch_size = max(len(training_data), len(validation_data))
@@ -221,23 +224,23 @@ class Trainer:
                 if phase == 'val':
                     # check if early stopping is possible
                     if self.es_scheduler and self.es_scheduler(losses['val'], losses['train']):
-                        print()
-                        print()
-                        print('Early stopping ...')
+                        self.logger.info('')
+                        self.logger.info('')
+                        self.logger.info('Early stopping ...')
                         if hasattr(self.es_scheduler, 'best_loss'):
-                            print(f'Minimum validation loss: {self.es_scheduler.best_loss}')
+                            self.logger.info(f'Minimum validation loss: {self.es_scheduler.best_loss}')
                         return self.es_scheduler.best_loss, self.es_scheduler.training_loss
 
                 if np.isnan(losses[phase]):
-                    print()
-                    print()
-                    print('Stopping because loss is NAN ...')
+                    self.logger.info('')
+                    self.logger.info('')
+                    self.logger.info('Stopping because loss is NAN ...')
                     return self.es_scheduler.best_loss, self.es_scheduler.training_loss
 
             if show_progress_bar:
                 bar.update(losses['train'], losses['val'])
 
-        print()
+        self.logger.info('')
 
         if self.es_scheduler:
             return self.es_scheduler.best_loss, self.es_scheduler.training_loss
@@ -272,35 +275,35 @@ class Trainer:
 
         self.network.print_parameters()
 
-        print()
+        self.logger.info('')
 
-        print('=> Training parameters:')
-        print(f'Training samples: {number_of_training_samples}')
-        print(f'Epochs: {number_of_epochs}')
-        print(f'Batch size: {training_loader.batch_size}')
-        print(f'Training loader: {training_loader.__class__.__name__}')
-        print(f'Mini-batch sampler: {training_loader.sampler.__class__.__name__}')
-        print(f'Optimizer: {self.optimizer.__class__.__name__}')
+        self.logger.info('=> Training parameters:')
+        self.logger.info(f'Training samples: {number_of_training_samples}')
+        self.logger.info(f'Epochs: {number_of_epochs}')
+        self.logger.info(f'Batch size: {training_loader.batch_size}')
+        self.logger.info(f'Training loader: {training_loader.__class__.__name__}')
+        self.logger.info(f'Mini-batch sampler: {training_loader.sampler.__class__.__name__}')
+        self.logger.info(f'Optimizer: {self.optimizer.__class__.__name__}')
         if learning_rate is not None:
-            print(f'Initial learning rate: {learning_rate}')
+            self.logger.info(f'Initial learning rate: {learning_rate}')
         else:
-            print(f'Initial learning rate: {self.learning_rate}')
-        print(f'Learning rate scheduler: {self.lr_scheduler.__class__.__name__}')
+            self.logger.info(f'Initial learning rate: {self.learning_rate}')
+        self.logger.info(f'Learning rate scheduler: {self.lr_scheduler.__class__.__name__}')
 
-        print()
+        self.logger.info('')
 
-        print('=> Validation parameters:')
-        print(f'Validation samples: {number_of_validation_samples}')
-        print(f'Batch size: {validation_loader.batch_size}')
-        print(f'Validation loader: {validation_loader.__class__.__name__}')
-        print(f'Mini-batch sampler: {validation_loader.sampler.__class__.__name__}')
+        self.logger.info('=> Validation parameters:')
+        self.logger.info('Validation samples: {number_of_validation_samples}')
+        self.logger.info(f'Batch size: {validation_loader.batch_size}')
+        self.logger.info(f'Validation loader: {validation_loader.__class__.__name__}')
+        self.logger.info(f'Mini-batch sampler: {validation_loader.sampler.__class__.__name__}')
         if self.es_scheduler:
-            print(f'Early stopping scheduler: {self.es_scheduler.__class__.__name__}')
+            self.logger.info(f'Early stopping scheduler: {self.es_scheduler.__class__.__name__}')
             if hasattr(self.es_scheduler, 'patience'):
-                print(f'Patience of early stopping scheduler: {self.es_scheduler.patience}')
+                self.logger.info(f'Patience of early stopping scheduler: {self.es_scheduler.patience}')
             if hasattr(self.es_scheduler, 'maximum_loss'):
-                print(f'Maximum loss to stop with: {self.es_scheduler.maximum_loss}')
+                self.logger.info(f'Maximum loss to stop with: {self.es_scheduler.maximum_loss}')
         else:
-            print('No early stopping used')
+            self.logger.info('No early stopping used')
 
-        print()
+        self.logger.info('')
