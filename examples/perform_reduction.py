@@ -11,7 +11,7 @@ from load_model import load_full_order_model
 
 
 def main(example: str = Argument(..., help='Path to the example to execute, for instance '
-                                           'example="1d.burgers.piecewise_constant.analytical"'),
+                                           'example="1d.burgers.piecewise_constant.burgers_1d_analytical"'),
          spatial_shape: List[int] = Argument(..., help='Number of unknowns in the spatial coordinate directions'),
          num_time_steps: int = Option(100, help='Number of time steps in the high-fidelity solutions'),
          additional_parameters: str = Option('{}', help='Additional parameters to pass to the full-order model',
