@@ -1,12 +1,9 @@
-import copy
 import pathlib
-import dill as pickle
+import pickle
 import torch
 
 from geodesic_shooting import ReducedGeodesicShooting
 from geodesic_shooting.utils.helper_functions import lincomb
-
-from nonlinear_mor.utils.torch.neural_networks import *  # noqa: F401,F403
 
 
 class ReducedSpacetimeModel:
@@ -47,8 +44,8 @@ class ReducedSpacetimeModel:
         return mapped_solution
 
     def save_model(self, filepath_prefix):
-        model_dictionary = copy.deepcopy(self.__dict__)
+        model_dictionary = self.__dict__
         model_dictionary['neural_network'] = filepath_prefix + '/neural_network.pt'
         torch.save(self.neural_network, model_dictionary['neural_network'])
-        with open(filepath_prefix + '/model.pickle', 'wb') as f:
+        with open(filepath_prefix + '/reduced_model.pickle', 'wb') as f:
             pickle.dump(model_dictionary, f)
