@@ -1,9 +1,12 @@
+import copy
 import pathlib
 import dill as pickle
 import torch
 
 from geodesic_shooting import ReducedGeodesicShooting
 from geodesic_shooting.utils.helper_functions import lincomb
+
+from nonlinear_mor.utils.torch.neural_networks import FullyConnectedNetwork
 
 
 class ReducedSpacetimeModel:
@@ -23,12 +26,19 @@ class ReducedSpacetimeModel:
 
     @classmethod
     def load_model(cls, model_dictionary):
-        neural_network_vector_fields = torch.load(model_dictionary['neural_network_vector_fields'])
+        init_params = model_dictionary['neural_network_vector_fields_init_params']
+        neural_network_vector_fields = FullyConnectedNetwork(**init_params)
+        neural_network_vector_fields.load_state_dict(torch.load(model_dictionary['neural_network_vector_fields']))
         neural_network_vector_fields.eval()
         model_dictionary['neural_network_vector_fields'] = neural_network_vector_fields
-        neural_network_snapshots = torch.load(model_dictionary['neural_network_snapshots'])
+
+        init_params = model_dictionary['neural_network_snapshots_init_params']
+        neural_network_snapshots = FullyConnectedNetwork(**init_params)
+        neural_network_snapshots.load_state_dict(torch.load(model_dictionary['neural_network_snapshots']))
         neural_network_snapshots.eval()
         model_dictionary['neural_network_snapshots'] = neural_network_snapshots
+        del model_dictionary['neural_network_vector_fields_init_params']
+        del model_dictionary['neural_network_snapshots_init_params']
         return cls(**model_dictionary)
 
     def solve(self, mu, save_intermediate_results=True, filepath_prefix='', interval=3, scale=2):
@@ -58,10 +68,18 @@ class ReducedSpacetimeModel:
         return mapped_solution
 
     def save_model(self, filepath_prefix):
-        model_dictionary = self.__dict__
+        model_dictionary = copy.deepcopy(self.__dict__)
+
         model_dictionary['neural_network_vector_fields'] = filepath_prefix + '/neural_network_vector_fields.pt'
-        torch.save(self.neural_network_vector_fields, model_dictionary['neural_network_vector_fields'])
+        torch.save(self.neural_network_vector_fields.state_dict(), model_dictionary['neural_network_vector_fields'])
+
         model_dictionary['neural_network_snapshots'] = filepath_prefix + '/neural_network_snapshots.pt'
-        torch.save(self.neural_network_snapshots, model_dictionary['neural_network_snapshots'])
+        torch.save(self.neural_network_snapshots.state_dict(), model_dictionary['neural_network_snapshots'])
+
+        init_params = self.neural_network_vector_fields.get_init_params()
+        model_dictionary['neural_network_vector_fields_init_params'] = init_params
+        init_params = self.neural_network_snapshots.get_init_params()
+        model_dictionary['neural_network_snapshots_init_params'] = init_params
+
         with open(filepath_prefix + '/reduced_model.pickle', 'wb') as f:
             pickle.dump(model_dictionary, f)

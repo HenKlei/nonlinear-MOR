@@ -54,6 +54,9 @@ class FullyConnectedNetwork(BaseFullyConnectedNetwork):
 
         self.logger = getLogger('nonlinear_mor.FullyConnectedNetwork')
 
+    def get_init_params(self):
+        return {'layers_sizes': self.layers_sizes, 'activation_function': self.activation_function}
+
     def forward(self, x):
         for i in range(0, self.number_of_layers - 2):
             x = self.activation_function(self.linear_layers[i](x))
