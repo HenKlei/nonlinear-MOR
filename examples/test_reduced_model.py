@@ -32,7 +32,8 @@ def main(filepath: str = Argument(..., help='Path to the folder containing the r
             pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)
             pathlib.Path(results_filepath + '/figures_tex').mkdir(parents=True, exist_ok=True)
 
-            reduced_model_filepath = f'{filepath}/reduced_models/basis_sizes_vf_{basis_size_vf}_s_{basis_size_s}/reduced_model.pickle'
+            reduced_model_filepath = (f'{filepath}/reduced_models/basis_sizes_vf_{basis_size_vf}_s_{basis_size_s}/' +
+                                      'reduced_model.pickle')
             with open(reduced_model_filepath, 'rb') as model_file:
                 model_dictionary = pickle.load(model_file)
 
