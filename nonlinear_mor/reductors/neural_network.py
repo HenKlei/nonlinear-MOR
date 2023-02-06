@@ -149,14 +149,11 @@ class NonlinearNeuralNetworkReductor:
                                                                  return_singular_values='all')
 
         with self.logger.block("Reducing transformed snapshots using POD ..."):
-            ######
-            # first apply inverse transformation before POD!!!
-            ######
             inverse_transformed_snapshots = []
             for i, (snapshot, vector_field) in enumerate(zip(transformed_snapshots, full_vector_fields)):
                 time_dependent_vector_field = self.geodesic_shooter.integrate_forward_vector_field(vector_field)
-                transformation = self.geodesic_shooter.integrate_forward_flow(time_dependent_vector_field)
-                it_snapshot = snapshot.push_backward(transformation)
+                inverse_transformation = time_dependent_vector_field.integrate_backward()
+                it_snapshot = snapshot.push_forward(inverse_transformation)
                 if save_intermediate_results:
                     filepath = filepath_prefix + '/intermediate_results'
                     pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
