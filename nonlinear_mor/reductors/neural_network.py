@@ -53,7 +53,7 @@ class NonlinearNeuralNetworkReductor:
         return [(mu, self.fom.solve(mu)) for mu in self.training_set]
 
     def perform_single_registration(self, input_, initial_vector_field=None, save_intermediate_results=True,
-                                    registration_params={'sigma': 0.1}, filepath_prefix=''):
+                                    registration_params={'sigma': 0.1}, filepath_prefix='', interval=10):
         assert len(input_) == 2
         mu, u = input_
         result = self.geodesic_shooter.register(self.reference_solution, u,
@@ -70,7 +70,9 @@ class NonlinearNeuralNetworkReductor:
             u.save(f'{filepath}/full_solution_mu_{str(mu).replace(".", "_")}.png')
             transformed_input.save(f'{filepath}/mapped_solution_mu_{str(mu).replace(".", "_")}.png')
             (u - transformed_input).save(f'{filepath}/difference_mu_{str(mu).replace(".", "_")}.png')
-            v0.save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}.png')
+            v0.save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}.png',
+                    plot_args={'title': '', 'interval': interval, 'color_length': False, 'show_axis': False, 'scale': None,
+                               'axis': None, 'figsize': (20, 20)})
             norm = (u - transformed_input).norm / u.norm
             with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
                 errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\n")
@@ -80,7 +82,7 @@ class NonlinearNeuralNetworkReductor:
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
                                 registration_params={'sigma': 0.1, 'iterations': 20},
                                 num_workers=1, full_vector_fields_file=None,
-                                reuse_vector_fields=True, filepath_prefix=''):
+                                reuse_vector_fields=True, filepath_prefix='', interval=10):
         if full_vector_fields_file:
             with open(full_vector_fields_file, 'rb') as vector_fields_file:
                 return pickle.load(vector_fields_file)
@@ -93,7 +95,8 @@ class NonlinearNeuralNetworkReductor:
                                                    initial_vector_field=None,
                                                    save_intermediate_results=save_intermediate_results,
                                                    registration_params=deepcopy(registration_params),
-                                                   filepath_prefix=filepath_prefix)
+                                                   filepath_prefix=filepath_prefix,
+                                                   interval=interval)
                     full_vector_fields = pool.map(perform_registration, full_solutions)
             else:
                 full_vector_fields = []
@@ -107,13 +110,14 @@ class NonlinearNeuralNetworkReductor:
                                               initial_vector_field=initial_vector_field,
                                               save_intermediate_results=save_intermediate_results,
                                               registration_params=deepcopy(registration_params),
-                                              filepath_prefix=filepath_prefix))
+                                              filepath_prefix=filepath_prefix,
+                                              interval=interval))
         return full_vector_fields
 
     def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10,
                save_intermediate_results=True, registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20],
                training_params={}, num_workers=1, full_solutions_file=None, full_vector_fields_file=None,
-               reuse_vector_fields=True, filepath_prefix=''):
+               reuse_vector_fields=True, filepath_prefix='', interval=10):
         assert isinstance(restarts, int) and restarts > 0
 
         with self.logger.block("Computing full solutions ..."):
@@ -124,7 +128,8 @@ class NonlinearNeuralNetworkReductor:
                                                           registration_params, num_workers,
                                                           full_vector_fields_file,
                                                           reuse_vector_fields,
-                                                          filepath_prefix)
+                                                          filepath_prefix,
+                                                          interval)
 
         with self.logger.block("Reducing vector fields using POD ..."):
             if l2_prod:
