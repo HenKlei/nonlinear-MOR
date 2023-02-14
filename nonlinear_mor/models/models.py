@@ -80,12 +80,12 @@ class WrappedpyMORModel(Model):
         with self.logger.block(f"Calling pyMOR to solve for mu={mu} ..."):
             u = self.model.solve(mu).to_numpy()
 
-        u = u.reshape((u.shape[0], *self.spatial_shape))
+        u = np.moveaxis(u.reshape((u.shape[0], *self.spatial_shape)), 0, -1)
 
         return ScalarFunction(data=u)
 
     def visualize(self, u):
-        u = u.to_numpy()
+        u = np.moveaxis(u.to_numpy(), -1, 0)
         U = self.model.operator.range.from_numpy(u.reshape(u.shape[0], -1))
         self.model.visualize(U)
 
