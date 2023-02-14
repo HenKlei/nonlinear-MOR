@@ -120,29 +120,40 @@ if PYCLAW:
                 u = self.call_pyclaw(self.claw, self.domain, mu)
 
             assert u.shape == (self.num_time_steps, *self.spatial_shape)
+            u = np.moveaxis(u, 0, -1)
 
             return ScalarFunction(data=u)
 
         def visualize(self, u):
+            assert u.dim in (2, 3)
+            u = np.moveaxis(u.to_numpy(), -1, 0)
+
             import matplotlib.pyplot as plt
             from matplotlib.animation import FuncAnimation
 
-            fig = plt.figure()
-            axis = fig.add_subplot(1, 1, 1)
+            fig, axis = plt.subplots()
 
-            x, y = self.claw.frames[0].state.grid.c_centers
-            vals = axis.imshow(u[0].transpose(), vmin=u.to_numpy().min(), vmax=u.to_numpy().max(),
-                               extent=[x.min(), x.max(), y.min(), y.max()], interpolation='nearest', origin='lower')
-            fig.colorbar(vals)
+            if u.ndim == 2:
+                x = self.claw.frames[0].state.grid.c_centers
+                vals = axis.plot(x[0], u[0])[0]
+            elif u.ndim == 3:
+                x, y = self.claw.frames[0].state.grid.c_centers
+                vals = axis.imshow(u[0].transpose(), vmin=u.min(), vmax=u.max(),
+                                   extent=[x.min(), x.max(), y.min(), y.max()], interpolation='nearest', origin='lower')
+                fig.colorbar(vals)
 
             def init():
                 axis.set_title("Frame 0")
                 return [vals]
 
             def update(frame):
-                vals.set_data(u[frame].transpose())
+                if u.ndim == 2:
+                    vals.set_ydata(u[frame])
+                elif u.ndim == 3:
+                    vals.set_data(u[frame])
+
                 axis.set_title(f"Frame {frame}")
                 return [vals]
 
-            ani = FuncAnimation(fig, update, frames=np.arange(0, u.full_shape[0]), init_func=init)  # noqa: F841
+            ani = FuncAnimation(fig, update, frames=np.arange(0, u.shape[0]), init_func=init)  # noqa: F841
             return ani
