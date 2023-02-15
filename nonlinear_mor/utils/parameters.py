@@ -30,6 +30,8 @@ class CubicParameterSpace(ParameterSpace):
             if self.dim != 1:
                 return False
             return self.extends[0][0] <= mu <= self.extends[0][1]
+        if not hasattr(mu, 'shape'):
+            mu = np.array(mu)
         if mu.shape != (self.dim, ):
             return False
         return all(self.extends[i][0] <= mu[i] <= self.extends[i][1] for i in range(self.dim))

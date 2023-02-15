@@ -16,7 +16,9 @@ def test_parameters():
     extends = [(0., 1.), (-1., 2.)]
     parameter_space = CubicParameterSpace(extends)
     assert np.array([0.5, 0.]) in parameter_space
+    assert [0.5, 0.] in parameter_space
     assert np.array([-1., 1.]) not in parameter_space
+    assert [-1., 1.] not in parameter_space
 
     samples = parameter_space.sample(num_samples=100, mode='uniform')
     assert len(samples) == 100
