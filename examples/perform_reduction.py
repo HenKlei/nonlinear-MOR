@@ -63,8 +63,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     registration_params = {'sigma': sigma}
     assert max_reduced_basis_size_vector_fields <= num_training_parameters
     basis_sizes_vector_fields = range(1, max_reduced_basis_size_vector_fields + 1)
-    assert max_reduced_basis_size_snapshots <= num_training_parameters
     if reduce_snapshots:
+        assert max_reduced_basis_size_snapshots <= num_training_parameters
         basis_sizes_snapshots = range(1, max_reduced_basis_size_snapshots + 1)
     else:
         basis_sizes_snapshots = [1]
