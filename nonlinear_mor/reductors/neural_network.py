@@ -120,12 +120,15 @@ class NonlinearNeuralNetworkReductor:
                     transformed_snapshots.append(ts)
         return full_vector_fields, transformed_snapshots
 
-    def reduce(self, basis_sizes_vector_fields=range(1, 11), l2_prod=False, basis_sizes_snapshots=range(1, 11),
-               return_all=True, restarts=10, save_intermediate_results=True, registration_params={}, trainer_params={},
-               hidden_layers_vf=[20, 20, 20], hidden_layers_s=[20, 20, 20], training_params={}, validation_ratio_vf=0.1,
-               validation_ratio_s=0.1, num_workers=1, full_solutions_file=None, full_vector_fields_file=None,
-               reuse_vector_fields=True, filepath_prefix='', interval=10):
+    def reduce(self, basis_sizes_vector_fields=range(1, 11), l2_prod=False, reduce_snapshots=True,
+               basis_sizes_snapshots=range(1, 11), return_all=True, restarts=10, save_intermediate_results=True,
+               registration_params={}, trainer_params={}, hidden_layers_vf=[20, 20, 20], hidden_layers_s=[20, 20, 20],
+               training_params={}, validation_ratio_vf=0.1, validation_ratio_s=0.1, num_workers=1,
+               full_solutions_file=None, full_vector_fields_file=None, reuse_vector_fields=True, filepath_prefix='',
+               interval=10):
         assert isinstance(restarts, int) and restarts > 0
+        if not reduce_snapshots:
+            assert basis_sizes_snapshots == [1]
 
         with self.logger.block("Computing full solutions ..."):
             full_solutions = self.compute_full_solutions(full_solutions_file)
@@ -148,21 +151,22 @@ class NonlinearNeuralNetworkReductor:
                                                                  product_operator=product_operator,
                                                                  return_singular_values='all')
 
-        with self.logger.block("Reducing transformed snapshots using POD ..."):
-            inverse_transformed_snapshots = []
-            for i, (snapshot, vector_field) in enumerate(zip(transformed_snapshots, full_vector_fields)):
-                time_dependent_vector_field = self.geodesic_shooter.integrate_forward_vector_field(vector_field)
-                inverse_transformation = time_dependent_vector_field.integrate_backward()
-                it_snapshot = snapshot.push_forward(inverse_transformation)
-                if save_intermediate_results:
-                    filepath = filepath_prefix + '/intermediate_results'
-                    pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
-                    it_snapshot.save(f'{filepath}/inverse_transformed_snapshot_number_{i}.png')
-                inverse_transformed_snapshots.append(it_snapshot)
-            all_reduced_transformed_snapshots, singular_values_ts = pod(inverse_transformed_snapshots,
-                                                                        num_modes=max(list(basis_sizes_snapshots)),
-                                                                        product_operator=None,
-                                                                        return_singular_values='all')
+        if reduce_snapshots:
+            with self.logger.block("Reducing transformed snapshots using POD ..."):
+                inverse_transformed_snapshots = []
+                for i, (snapshot, vector_field) in enumerate(zip(transformed_snapshots, full_vector_fields)):
+                    time_dependent_vector_field = self.geodesic_shooter.integrate_forward_vector_field(vector_field)
+                    inverse_transformation = time_dependent_vector_field.integrate_backward()
+                    it_snapshot = snapshot.push_forward(inverse_transformation)
+                    if save_intermediate_results:
+                        filepath = filepath_prefix + '/intermediate_results'
+                        pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
+                        it_snapshot.save(f'{filepath}/inverse_transformed_snapshot_number_{i}.png')
+                    inverse_transformed_snapshots.append(it_snapshot)
+                all_reduced_transformed_snapshots, singular_values_ts = pod(inverse_transformed_snapshots,
+                                                                            num_modes=max(list(basis_sizes_snapshots)),
+                                                                            product_operator=None,
+                                                                            return_singular_values='all')
 
         if not l2_prod:
             norms = []
@@ -177,9 +181,10 @@ class NonlinearNeuralNetworkReductor:
             with open(f'{filepath}/singular_values_vector_fields.txt', 'a') as singular_values_vfs_file:
                 for val in singular_values_vfs:
                     singular_values_vfs_file.write(f"{val}\n")
-            with open(f'{filepath}/singular_values_transformed_snapshots.txt', 'a') as singular_values_ts_file:
-                for val in singular_values_ts:
-                    singular_values_ts_file.write(f"{val}\n")
+            if reduce_snapshots:
+                with open(f'{filepath}/singular_values_transformed_snapshots.txt', 'a') as singular_values_ts_file:
+                    for val in singular_values_ts:
+                        singular_values_ts_file.write(f"{val}\n")
 
         roms = []
 
@@ -187,7 +192,6 @@ class NonlinearNeuralNetworkReductor:
             temp_roms = []
             for basis_size_s in basis_sizes_snapshots:
                 reduced_vector_fields = all_reduced_vector_fields[:basis_size_vf]
-                reduced_snapshots = all_reduced_transformed_snapshots[:basis_size_s]
 
                 self.logger.info("Computing reduced coefficients for vector fields ...")
                 snapshot_matrix = np.stack([a.flatten() for a in reduced_vector_fields])
@@ -219,50 +223,65 @@ class NonlinearNeuralNetworkReductor:
                     for i, v in enumerate(reduced_vector_fields):
                         reduced_vector_fields[i] = v * norms[i]
 
-                self.logger.info("Computing reduced coefficients for snapshots ...")
-                reduced_coefficients_s = []
-                for s in inverse_transformed_snapshots:
-                    reduced_coefficients_s.append(project(reduced_snapshots, s))
-                reduced_coefficients_s = np.array(reduced_coefficients_s)
+                if reduce_snapshots:
+                    self.logger.info("Computing reduced coefficients for snapshots ...")
+                    reduced_snapshots = all_reduced_transformed_snapshots[:basis_size_s]
+                    reduced_coefficients_s = []
+                    for s in inverse_transformed_snapshots:
+                        reduced_coefficients_s.append(project(reduced_snapshots, s))
+                    reduced_coefficients_s = np.array(reduced_coefficients_s)
 
-                self.logger.info("Approximating mapping from parameters to reduced coefficients for snapshots ...")
-                training_data_s = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for mu, coeff in
-                                   zip(self.training_set, reduced_coefficients_s)]
-                random.shuffle(training_data_s)
-                validation_data_s = training_data_s[:int(validation_ratio_s * len(training_data_s)) + 1]
-                training_data_s = training_data_s[int(validation_ratio_s * len(training_data_s)) + 2:]
+                    self.logger.info("Approximating mapping from parameters to reduced coefficients for snapshots ...")
+                    training_data_s = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for mu, coeff in
+                                       zip(self.training_set, reduced_coefficients_s)]
+                    random.shuffle(training_data_s)
+                    validation_data_s = training_data_s[:int(validation_ratio_s * len(training_data_s)) + 1]
+                    training_data_s = training_data_s[int(validation_ratio_s * len(training_data_s)) + 2:]
 
-                self.compute_normalization_snapshots(training_data_s, validation_data_s)
-                training_data_s = self.normalize_snapshots(training_data_s)
-                validation_data_s = self.normalize_snapshots(validation_data_s)
+                    self.compute_normalization_snapshots(training_data_s, validation_data_s)
+                    training_data_s = self.normalize_snapshots(training_data_s)
+                    validation_data_s = self.normalize_snapshots(validation_data_s)
 
-                layers_sizes_s = [self.fom.parameter_space.dim] + list(hidden_layers_s) + [basis_size_s]
+                    layers_sizes_s = [self.fom.parameter_space.dim] + list(hidden_layers_s) + [basis_size_s]
 
-                best_ann_s, best_loss_s = self.multiple_restarts_training(training_data_s, validation_data_s,
-                                                                          layers_sizes_s, restarts, trainer_params,
-                                                                          training_params)
+                    best_ann_s, best_loss_s = self.multiple_restarts_training(training_data_s, validation_data_s,
+                                                                              layers_sizes_s, restarts, trainer_params,
+                                                                              training_params)
+                else:
+                    reduced_snapshots = self.reference_solution
+                    best_ann_s = None
 
                 self.logger.info("Building reduced model ...")
                 rom = self.build_rom(reduced_vector_fields, reduced_snapshots, best_ann_vf, best_ann_s)
 
                 if return_all:
-                    temp_roms.append((rom, {'training_data_vf': training_data_vf,
-                                            'validation_data_vf': validation_data_vf,
-                                            'best_loss_vf': best_loss_vf,
-                                            'training_data_s': training_data_s,
-                                            'validation_data_s': validation_data_s,
-                                            'best_loss_s': best_loss_s}))
+                    if reduce_snapshots:
+                        temp_roms.append((rom, {'training_data_vf': training_data_vf,
+                                                'validation_data_vf': validation_data_vf,
+                                                'best_loss_vf': best_loss_vf,
+                                                'training_data_s': training_data_s,
+                                                'validation_data_s': validation_data_s,
+                                                'best_loss_s': best_loss_s}))
+                    else:
+                        temp_roms.append((rom, {'training_data_vf': training_data_vf,
+                                                'validation_data_vf': validation_data_vf,
+                                                'best_loss_vf': best_loss_vf}))
                 else:
                     temp_roms.append(rom)
             roms.append(temp_roms)
 
         if return_all:
-            return roms, {'all_reduced_vector_fields': all_reduced_vector_fields,
-                          'all_reduced_transformed_snapshots': all_reduced_transformed_snapshots,
-                          'singular_values_vfs': singular_values_vfs,
-                          'singular_values_ts': singular_values_ts,
-                          'full_vector_fields': full_vector_fields,
-                          'transformed_snapshots': transformed_snapshots}
+            if reduce_snapshots:
+                return roms, {'all_reduced_vector_fields': all_reduced_vector_fields,
+                              'all_reduced_transformed_snapshots': all_reduced_transformed_snapshots,
+                              'singular_values_vfs': singular_values_vfs,
+                              'singular_values_ts': singular_values_ts,
+                              'full_vector_fields': full_vector_fields,
+                              'transformed_snapshots': transformed_snapshots}
+            else:
+                return roms, {'all_reduced_vector_fields': all_reduced_vector_fields,
+                              'singular_values_vfs': singular_values_vfs,
+                              'full_vector_fields': full_vector_fields}
 
         return roms
 

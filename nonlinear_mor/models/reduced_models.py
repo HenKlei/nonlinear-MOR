@@ -32,13 +32,17 @@ class ReducedSpacetimeModel:
         neural_network_vector_fields.eval()
         model_dictionary['neural_network_vector_fields'] = neural_network_vector_fields
 
-        init_params = model_dictionary['neural_network_snapshots_init_params']
-        neural_network_snapshots = FullyConnectedNetwork(**init_params)
-        neural_network_snapshots.load_state_dict(torch.load(model_dictionary['neural_network_snapshots']))
-        neural_network_snapshots.eval()
-        model_dictionary['neural_network_snapshots'] = neural_network_snapshots
+        if 'neural_network_snapshots_init_params' in model_dictionary:
+            init_params = model_dictionary['neural_network_snapshots_init_params']
+            neural_network_snapshots = FullyConnectedNetwork(**init_params)
+            neural_network_snapshots.load_state_dict(torch.load(model_dictionary['neural_network_snapshots']))
+            neural_network_snapshots.eval()
+            model_dictionary['neural_network_snapshots'] = neural_network_snapshots
+        else:
+            model_dictionary['neural_network_snapshots'] = None
         del model_dictionary['neural_network_vector_fields_init_params']
-        del model_dictionary['neural_network_snapshots_init_params']
+        if 'neural_network_snapshots_init_params' in model_dictionary:
+            del model_dictionary['neural_network_snapshots_init_params']
         return cls(**model_dictionary)
 
     def solve(self, mu, save_intermediate_results=True, filepath_prefix='', interval=3, scale=2):
@@ -57,12 +61,15 @@ class ReducedSpacetimeModel:
                                                title=f"Initial vector field for $\\mu={mu}$",
                                                interval=interval, scale=scale)
         vector_fields = self.geodesic_shooter.integrate_forward_vector_field(initial_vector_field)
-        flow = self.geodesic_shooter.integrate_forward_flow(vector_fields)
+        flow = vector_fields.integrate()
 
-        normalized_mu_s = self.normalize_input_snapshots(torch.Tensor([mu, ]))
-        normalized_reduced_coefficients_s = self.neural_network_snapshots(normalized_mu_s).data.numpy()
-        reduced_coefficients_s = self.denormalize_output_snapshots(normalized_reduced_coefficients_s)
-        reduced_snapshots = lincomb(self.snapshots, reduced_coefficients_s)
+        if self.neural_network_snapshots:
+            normalized_mu_s = self.normalize_input_snapshots(torch.Tensor([mu, ]))
+            normalized_reduced_coefficients_s = self.neural_network_snapshots(normalized_mu_s).data.numpy()
+            reduced_coefficients_s = self.denormalize_output_snapshots(normalized_reduced_coefficients_s)
+            reduced_snapshots = lincomb(self.snapshots, reduced_coefficients_s)
+        else:
+            reduced_snapshots = self.snapshots
 
         mapped_solution = reduced_snapshots.push_forward(flow)
         return mapped_solution
@@ -73,13 +80,15 @@ class ReducedSpacetimeModel:
         model_dictionary['neural_network_vector_fields'] = filepath_prefix + '/neural_network_vector_fields.pt'
         torch.save(self.neural_network_vector_fields.state_dict(), model_dictionary['neural_network_vector_fields'])
 
-        model_dictionary['neural_network_snapshots'] = filepath_prefix + '/neural_network_snapshots.pt'
-        torch.save(self.neural_network_snapshots.state_dict(), model_dictionary['neural_network_snapshots'])
+        if self.neural_network_snapshots:
+            model_dictionary['neural_network_snapshots'] = filepath_prefix + '/neural_network_snapshots.pt'
+            torch.save(self.neural_network_snapshots.state_dict(), model_dictionary['neural_network_snapshots'])
 
         init_params = self.neural_network_vector_fields.get_init_params()
         model_dictionary['neural_network_vector_fields_init_params'] = init_params
-        init_params = self.neural_network_snapshots.get_init_params()
-        model_dictionary['neural_network_snapshots_init_params'] = init_params
+        if self.neural_network_snapshots:
+            init_params = self.neural_network_snapshots.get_init_params()
+            model_dictionary['neural_network_snapshots_init_params'] = init_params
 
         with open(filepath_prefix + '/reduced_model.pickle', 'wb') as f:
             pickle.dump(model_dictionary, f)

@@ -25,13 +25,14 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          sigma: float = Option(0.1, help='Registration parameter `sigma`'),
          max_reduced_basis_size_vector_fields: int = Option(50, help='Maximum dimension of reduced basis for '
                                                                      'vector fields'),
+         reduce_snapshots: bool = Option(True, help='Determines whether or not to reduce the snapshots as well'),
          max_reduced_basis_size_snapshots: int = Option(50, help='Maximum dimension of reduced basis for snapshots'),
          num_workers: int = Option(1, help='Number of cores to use during registration; if greater than 1, the former '
                                            'vector field is not reused, otherwise the former vector field is used as '
                                            'initialization for the registration'),
          l2_prod: bool = Option(False, help='Determines whether or not to use the L2-product as inner product for '
                                             'orthonormalizing the vector fields'),
-         neural_network_training_restarts: int = Option(25, help='Maximum number of training restarts'),
+         neural_network_training_restarts: int = Option(1, help='Maximum number of training restarts'),
          hidden_layers_vector_field: List[int] = Option([20, 20, 20], help='Number of neurons in each hidden layer '
                                                         '(neural network for reduced coefficients of vector fields)'),
          hidden_layers_snapshots: List[int] = Option([20, 20, 20], help='Number of neurons in each hidden layer '
@@ -63,7 +64,11 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     assert max_reduced_basis_size_vector_fields <= num_training_parameters
     basis_sizes_vector_fields = range(1, max_reduced_basis_size_vector_fields + 1)
     assert max_reduced_basis_size_snapshots <= num_training_parameters
-    basis_sizes_snapshots = range(1, max_reduced_basis_size_snapshots + 1)
+    if reduce_snapshots:
+        basis_sizes_snapshots = range(1, max_reduced_basis_size_snapshots + 1)
+    else:
+        basis_sizes_snapshots = [1]
+        max_reduced_basis_size_snapshots = "1 (not performing reduction of snapshots)"
 
     if full_vector_fields_filepath_prefix:
         full_vector_fields_file = f'{full_vector_fields_filepath_prefix}/outputs/full_vector_fields'
@@ -88,6 +93,9 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                              + '\n' + 'Hidden layers of neural network (snapshots): ' + str(hidden_layers_snapshots)
                              + '\n' + 'L2-product used: ' + str(l2_prod) + '\n')
 
+        if not reduce_snapshots:
+            reduction_summary += '++ Not performing reduction of snapshots!\n'
+
         with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
             summary_file.write('Example: ' + example)
             summary_file.write('\n\n========================================================\n\n')
@@ -98,8 +106,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             summary_file.write(reduction_summary)
 
     roms, output_dict = reductor.reduce(basis_sizes_vector_fields=basis_sizes_vector_fields, l2_prod=l2_prod,
-                                        basis_sizes_snapshots=basis_sizes_snapshots, return_all=True,
-                                        save_intermediate_results=write_results,
+                                        reduce_snapshots=reduce_snapshots, basis_sizes_snapshots=basis_sizes_snapshots,
+                                        return_all=True, save_intermediate_results=write_results,
                                         restarts=neural_network_training_restarts, num_workers=num_workers,
                                         full_vector_fields_file=full_vector_fields_file,
                                         registration_params=registration_params,
