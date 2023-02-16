@@ -42,7 +42,7 @@ class ReducedSpacetimeModel:
                                                  title=f"Initial vector field for $\\mu={mu}$",
                                                  interval=interval, scale=scale)
         velocity_fields = self.geodesic_shooter.integrate_forward_vector_field(initial_velocity_field)
-        flow = self.geodesic_shooter.integrate_forward_flow(velocity_fields)
+        flow = velocity_fields.integrate()
         mapped_solution = self.reference_solution.push_forward(flow)
         return mapped_solution
 
