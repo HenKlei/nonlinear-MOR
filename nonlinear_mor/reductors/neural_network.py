@@ -8,7 +8,9 @@ from copy import deepcopy
 import pathlib
 
 import geodesic_shooting
+from geodesic_shooting.core import ScalarFunction
 from geodesic_shooting.utils.reduced import pod
+from geodesic_shooting.utils.helper_functions import project
 
 from nonlinear_mor.models import ReducedSpacetimeModel
 from nonlinear_mor.utils.logger import getLogger
@@ -46,43 +48,61 @@ class NonlinearNeuralNetworkReductor:
         summary += 'Training parameters (' + str(len(self.training_set)) + '): ' + str(self.training_set) + '\n'
         return summary
 
-    def compute_full_solutions(self, full_solutions_file=None):
+    def _prepare_solution(self, mu, padding=0):
+        u = self.fom.solve(mu)
+        if padding > 0:
+            spatial_shape = tuple([i + 2 * padding for i in u.full_shape])
+            u_new = ScalarFunction(spatial_shape=spatial_shape)
+            slice_original_function = tuple(np.s_[padding:-padding] * u.dim)
+            u_new[slice_original_function] = u
+            return u_new
+        else:
+            return u
+
+    def compute_full_solutions(self, full_solutions_file=None, padding=0):
         if full_solutions_file:
             with open(full_solutions_file, 'rb') as solution_file:
                 return pickle.load(solution_file)
-        return [(mu, self.fom.solve(mu)) for mu in self.training_set]
+        return [(mu, self._prepare_solution(mu)) for mu in self.training_set]
 
-    def perform_single_registration(self, input_, initial_vector_field=None, save_intermediate_results=True,
-                                    registration_params={'sigma': 0.1}, filepath_prefix='', interval=10):
-        assert len(input_) == 2
-        mu, u = input_
+    def perform_single_registration(self, input_values, initial_vector_field=None, save_intermediate_results=True,
+                                    registration_params={'sigma': 0.1}, filepath_prefix='', padding=0, interval=10):
+        assert len(input_values) == 2
+        mu, u = input_values
+
+        restriction = np.s_[...]
+        if padding > 0:
+            restriction = tuple([np.s_[padding:-padding]] * u.dim)
+
+        assert False, "The slicing is somehow not working!"
+
         result = self.geodesic_shooter.register(self.reference_solution, u,
                                                 initial_vector_field=initial_vector_field,
-                                                **registration_params, return_all=True)
+                                                **registration_params, restriction=restriction, return_all=True)
 
         v0 = result['initial_vector_field']
+        ts = result['transformed_input']
 
         if save_intermediate_results:
             filepath = filepath_prefix + '/intermediate_results'
             pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
-            transformed_input = result['transformed_input']
 
             u.save(f'{filepath}/full_solution_mu_{str(mu).replace(".", "_")}.png')
-            transformed_input.save(f'{filepath}/mapped_solution_mu_{str(mu).replace(".", "_")}.png')
-            (u - transformed_input).save(f'{filepath}/difference_mu_{str(mu).replace(".", "_")}.png')
+            ts.save(f'{filepath}/transformed_solution_mu_{str(mu).replace(".", "_")}.png')
+            (u - ts).save(f'{filepath}/difference_mu_{str(mu).replace(".", "_")}.png')
             v0.save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}.png',
-                    plot_args={'title': '', 'interval': interval, 'color_length': False, 'show_axis': False, 'scale': None,
-                               'axis': None, 'figsize': (20, 20)})
-            norm = (u - transformed_input).norm / u.norm
+                    plot_args={'title': '', 'interval': interval, 'color_length': False, 'show_axis': False,
+                               'scale': None, 'axis': None, 'figsize': (20, 20)})
+            norm = (u - ts).norm / u.norm
             with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
                 errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\n")
 
-        return v0
+        return v0, ts
 
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
                                 registration_params={'sigma': 0.1, 'iterations': 20},
                                 num_workers=1, full_vector_fields_file=None,
-                                reuse_vector_fields=True, filepath_prefix='', interval=10):
+                                reuse_vector_fields=True, filepath_prefix='', padding=0, interval=10):
         if full_vector_fields_file:
             with open(full_vector_fields_file, 'rb') as vector_fields_file:
                 return pickle.load(vector_fields_file)
@@ -96,50 +116,78 @@ class NonlinearNeuralNetworkReductor:
                                                    save_intermediate_results=save_intermediate_results,
                                                    registration_params=deepcopy(registration_params),
                                                    filepath_prefix=filepath_prefix,
-                                                   interval=interval)
-                    full_vector_fields = pool.map(perform_registration, full_solutions)
+                                                   padding=padding, interval=interval)
+                    results = pool.map(perform_registration, full_solutions)
+                    full_vector_fields = [r[0] for r in results]
+                    transformed_snapshots = [r[1] for r in results]
             else:
                 full_vector_fields = []
+                transformed_snapshots = []
                 for i, (mu, u) in enumerate(full_solutions):
                     if reuse_vector_fields and i > 0:
                         initial_vector_field = full_vector_fields[-1]
                         self.logger.info("Reusing vector field from previous registration ...")
                     else:
                         initial_vector_field = None
-                    full_vector_fields.append(self.perform_single_registration((mu, u),
-                                              initial_vector_field=initial_vector_field,
-                                              save_intermediate_results=save_intermediate_results,
-                                              registration_params=deepcopy(registration_params),
-                                              filepath_prefix=filepath_prefix,
-                                              interval=interval))
-        return full_vector_fields
+                    vf, ts = self.perform_single_registration((mu, u),
+                                                              initial_vector_field=initial_vector_field,
+                                                              save_intermediate_results=save_intermediate_results,
+                                                              registration_params=deepcopy(registration_params),
+                                                              filepath_prefix=filepath_prefix,
+                                                              padding=padding, interval=interval)
+                    full_vector_fields.append(vf)
+                    transformed_snapshots.append(ts)
+        return full_vector_fields, transformed_snapshots
 
-    def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10,
-               save_intermediate_results=True, registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20],
-               training_params={}, num_workers=1, full_solutions_file=None, full_vector_fields_file=None,
-               reuse_vector_fields=True, filepath_prefix='', interval=10):
+    def reduce(self, basis_sizes_vector_fields=range(1, 11), l2_prod=False, reduce_snapshots=True,
+               basis_sizes_snapshots=range(1, 11), return_all=True, restarts=10, save_intermediate_results=True,
+               registration_params={}, trainer_params={}, hidden_layers_vf=[20, 20, 20], hidden_layers_s=[20, 20, 20],
+               training_params={}, validation_ratio_vf=0.1, validation_ratio_s=0.1, num_workers=1,
+               full_solutions_file=None, full_vector_fields_file=None, reuse_vector_fields=True, filepath_prefix='',
+               padding=0, interval=10):
         assert isinstance(restarts, int) and restarts > 0
+        assert isinstance(padding, int)
+        if not reduce_snapshots:
+            assert basis_sizes_snapshots == [1]
 
         with self.logger.block("Computing full solutions ..."):
             full_solutions = self.compute_full_solutions(full_solutions_file)
 
-        full_vector_fields = self.register_full_solutions(full_solutions,
-                                                          save_intermediate_results,
-                                                          registration_params, num_workers,
-                                                          full_vector_fields_file,
-                                                          reuse_vector_fields,
-                                                          filepath_prefix,
-                                                          interval)
+        full_vector_fields, transformed_snapshots = self.register_full_solutions(full_solutions,
+                                                                                 save_intermediate_results,
+                                                                                 registration_params, num_workers,
+                                                                                 full_vector_fields_file,
+                                                                                 reuse_vector_fields,
+                                                                                 filepath_prefix,
+                                                                                 padding,
+                                                                                 interval)
 
         with self.logger.block("Reducing vector fields using POD ..."):
             if l2_prod:
                 product_operator = None
             else:
                 product_operator = self.geodesic_shooter.regularizer.cauchy_navier
-            all_reduced_vector_fields, singular_values = pod(full_vector_fields,
-                                                             num_modes=max(list(basis_sizes)),
-                                                             product_operator=product_operator,
-                                                             return_singular_values='all')
+            all_reduced_vector_fields, singular_values_vfs = pod(full_vector_fields,
+                                                                 num_modes=max(list(basis_sizes_vector_fields)),
+                                                                 product_operator=product_operator,
+                                                                 return_singular_values='all')
+
+        if reduce_snapshots:
+            with self.logger.block("Reducing transformed snapshots using POD ..."):
+                inverse_transformed_snapshots = []
+                for i, (snapshot, vector_field) in enumerate(zip(transformed_snapshots, full_vector_fields)):
+                    time_dependent_vector_field = self.geodesic_shooter.integrate_forward_vector_field(vector_field)
+                    inverse_transformation = time_dependent_vector_field.integrate_backward()
+                    it_snapshot = snapshot.push_forward(inverse_transformation)
+                    if save_intermediate_results:
+                        filepath = filepath_prefix + '/intermediate_results'
+                        pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
+                        it_snapshot.save(f'{filepath}/inverse_transformed_snapshot_number_{i}.png')
+                    inverse_transformed_snapshots.append(it_snapshot)
+                all_reduced_transformed_snapshots, singular_values_ts = pod(inverse_transformed_snapshots,
+                                                                            num_modes=max(list(basis_sizes_snapshots)),
+                                                                            product_operator=None,
+                                                                            return_singular_values='all')
 
         if not l2_prod:
             norms = []
@@ -151,79 +199,154 @@ class NonlinearNeuralNetworkReductor:
         if save_intermediate_results:
             filepath = filepath_prefix + '/intermediate_results'
             pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
-            with open(f'{filepath}/singular_values.txt', 'a') as singular_values_file:
-                for val in singular_values:
-                    singular_values_file.write(f"{val}\n")
+            with open(f'{filepath}/singular_values_vector_fields.txt', 'a') as singular_values_vfs_file:
+                for val in singular_values_vfs:
+                    singular_values_vfs_file.write(f"{val}\n")
+            if reduce_snapshots:
+                with open(f'{filepath}/singular_values_transformed_snapshots.txt', 'a') as singular_values_ts_file:
+                    for val in singular_values_ts:
+                        singular_values_ts_file.write(f"{val}\n")
 
         roms = []
 
-        for basis_size in basis_sizes:
-            reduced_vector_fields = all_reduced_vector_fields[:basis_size]
-            self.logger.info("Computing reduced coefficients ...")
-            snapshot_matrix = np.stack([a.flatten() for a in reduced_vector_fields])
-            if l2_prod:
-                prod_reduced_vector_fields = np.stack([a.flatten() for a in full_vector_fields])
-            else:
-                prod_reduced_vector_fields = np.stack([product_operator(a).flatten() for a in full_vector_fields])
-            reduced_coefficients = snapshot_matrix.dot(prod_reduced_vector_fields.T).T
-            assert reduced_coefficients.shape == (len(self.training_set), len(reduced_vector_fields))
+        for basis_size_vf in basis_sizes_vector_fields:
+            temp_roms = []
+            for basis_size_s in basis_sizes_snapshots:
+                reduced_vector_fields = all_reduced_vector_fields[:basis_size_vf]
 
-            self.logger.info("Approximating mapping from parameters to reduced coefficients ...")
-            training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for mu, coeff in
-                             zip(self.training_set, reduced_coefficients)]
-            random.shuffle(training_data)
-            validation_data = training_data[:int(0.1 * len(training_data)) + 1]
-            training_data = training_data[int(0.1 * len(training_data)) + 2:]
+                self.logger.info("Computing reduced coefficients for vector fields ...")
+                snapshot_matrix = np.stack([a.flatten() for a in reduced_vector_fields])
+                if l2_prod:
+                    prod_reduced_vector_fields = np.stack([a.flatten() for a in full_vector_fields])
+                else:
+                    prod_reduced_vector_fields = np.stack([product_operator(a).flatten() for a in full_vector_fields])
+                reduced_coefficients_vf = snapshot_matrix.dot(prod_reduced_vector_fields.T).T
+                assert reduced_coefficients_vf.shape == (len(self.training_set), len(reduced_vector_fields))
 
-            self.compute_normalization(training_data, validation_data)
-            training_data = self.normalize(training_data)
-            validation_data = self.normalize(validation_data)
+                self.logger.info("Approximating mapping from parameters to reduced coefficients for vector fields ...")
+                training_data_vf = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for mu, coeff in
+                                    zip(self.training_set, reduced_coefficients_vf)]
+                random.shuffle(training_data_vf)
+                validation_data_vf = training_data_vf[:int(validation_ratio_vf * len(training_data_vf)) + 1]
+                training_data_vf = training_data_vf[int(validation_ratio_vf * len(training_data_vf)) + 2:]
 
-            layers_sizes = [self.fom.parameter_space.dim] + list(hidden_layers) + [basis_size]
+                self.compute_normalization_vector_fields(training_data_vf, validation_data_vf)
+                training_data_vf = self.normalize_vector_fields(training_data_vf)
+                validation_data_vf = self.normalize_vector_fields(validation_data_vf)
 
-            best_ann, best_loss = self.multiple_restarts_training(training_data, validation_data, layers_sizes,
-                                                                  restarts, trainer_params, training_params)
+                layers_sizes_vf = [self.fom.parameter_space.dim] + list(hidden_layers_vf) + [basis_size_vf]
 
-            if not l2_prod:
-                for i, v in enumerate(reduced_vector_fields):
-                    reduced_vector_fields[i] = v * norms[i]
+                best_ann_vf, best_loss_vf = self.multiple_restarts_training(training_data_vf, validation_data_vf,
+                                                                            layers_sizes_vf, restarts, trainer_params,
+                                                                            training_params)
 
-            self.logger.info("Building reduced model ...")
-            rom = self.build_rom(reduced_vector_fields, best_ann)
+                if not l2_prod:
+                    for i, v in enumerate(reduced_vector_fields):
+                        reduced_vector_fields[i] = v * norms[i]
 
-            if return_all:
-                roms.append((rom, {'training_data': training_data,
-                                   'validation_data': validation_data,
-                                   'best_loss': best_loss}))
-            else:
-                roms.append(rom)
+                if reduce_snapshots:
+                    self.logger.info("Computing reduced coefficients for snapshots ...")
+                    reduced_snapshots = all_reduced_transformed_snapshots[:basis_size_s]
+                    reduced_coefficients_s = []
+                    for s in inverse_transformed_snapshots:
+                        reduced_coefficients_s.append(project(reduced_snapshots, s))
+                    reduced_coefficients_s = np.array(reduced_coefficients_s)
+
+                    self.logger.info("Approximating mapping from parameters to reduced coefficients for snapshots ...")
+                    training_data_s = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for mu, coeff in
+                                       zip(self.training_set, reduced_coefficients_s)]
+                    random.shuffle(training_data_s)
+                    validation_data_s = training_data_s[:int(validation_ratio_s * len(training_data_s)) + 1]
+                    training_data_s = training_data_s[int(validation_ratio_s * len(training_data_s)) + 2:]
+
+                    self.compute_normalization_snapshots(training_data_s, validation_data_s)
+                    training_data_s = self.normalize_snapshots(training_data_s)
+                    validation_data_s = self.normalize_snapshots(validation_data_s)
+
+                    layers_sizes_s = [self.fom.parameter_space.dim] + list(hidden_layers_s) + [basis_size_s]
+
+                    best_ann_s, best_loss_s = self.multiple_restarts_training(training_data_s, validation_data_s,
+                                                                              layers_sizes_s, restarts, trainer_params,
+                                                                              training_params)
+                else:
+                    reduced_snapshots = self.reference_solution
+                    best_ann_s = None
+
+                self.logger.info("Building reduced model ...")
+                rom = self.build_rom(reduced_vector_fields, reduced_snapshots, best_ann_vf, best_ann_s)
+
+                if return_all:
+                    if reduce_snapshots:
+                        temp_roms.append((rom, {'training_data_vf': training_data_vf,
+                                                'validation_data_vf': validation_data_vf,
+                                                'best_loss_vf': best_loss_vf,
+                                                'training_data_s': training_data_s,
+                                                'validation_data_s': validation_data_s,
+                                                'best_loss_s': best_loss_s}))
+                    else:
+                        temp_roms.append((rom, {'training_data_vf': training_data_vf,
+                                                'validation_data_vf': validation_data_vf,
+                                                'best_loss_vf': best_loss_vf}))
+                else:
+                    temp_roms.append(rom)
+            roms.append(temp_roms)
 
         if return_all:
-            return roms, {'all_reduced_vector_fields': all_reduced_vector_fields,
-                          'singular_values': singular_values,
-                          'full_vector_fields': full_vector_fields}
+            if reduce_snapshots:
+                return roms, {'all_reduced_vector_fields': all_reduced_vector_fields,
+                              'all_reduced_transformed_snapshots': all_reduced_transformed_snapshots,
+                              'singular_values_vfs': singular_values_vfs,
+                              'singular_values_ts': singular_values_ts,
+                              'full_vector_fields': full_vector_fields,
+                              'transformed_snapshots': transformed_snapshots}
+            else:
+                return roms, {'all_reduced_vector_fields': all_reduced_vector_fields,
+                              'singular_values_vfs': singular_values_vfs,
+                              'full_vector_fields': full_vector_fields}
 
         return roms
 
-    def compute_normalization(self, training_data, validation_data):
-        self.min_input = np.min([elem[0].numpy() for elem in training_data + validation_data])
-        self.max_input = np.max([elem[0].numpy() for elem in training_data + validation_data])
-        self.min_output = np.min([elem[1].numpy() for elem in training_data + validation_data])
-        self.max_output = np.max([elem[1].numpy() for elem in training_data + validation_data])
+    def compute_normalization_vector_fields(self, training_data, validation_data):
+        self.min_input_vf = np.min([elem[0].numpy() for elem in training_data + validation_data])
+        self.max_input_vf = np.max([elem[0].numpy() for elem in training_data + validation_data])
+        self.min_output_vf = np.min([elem[1].numpy() for elem in training_data + validation_data])
+        self.max_output_vf = np.max([elem[1].numpy() for elem in training_data + validation_data])
 
-    def normalize(self, data):
-        assert hasattr(self, 'min_input') and hasattr(self, 'max_input')
-        assert hasattr(self, 'min_output') and hasattr(self, 'max_output')
-        return [(self.normalize_input(elem[0]), self.normalize_output(elem[1])) for elem in data]
+    def normalize_vector_fields(self, data):
+        assert hasattr(self, 'min_input_vf') and hasattr(self, 'max_input_vf')
+        assert hasattr(self, 'min_output_vf') and hasattr(self, 'max_output_vf')
+        return [(self.normalize_input_vector_fields(elem[0]),
+                 self.normalize_output_vector_fields(elem[1])) for elem in data]
 
-    def normalize_input(self, data):
-        return (data - self.min_input) / (self.max_input - self.min_input)
+    def normalize_input_vector_fields(self, data):
+        return (data - self.min_input_vf) / (self.max_input_vf - self.min_input_vf)
 
-    def normalize_output(self, data):
-        return (data - self.min_output) / (self.max_output - self.min_output)
+    def normalize_output_vector_fields(self, data):
+        return (data - self.min_output_vf) / (self.max_output_vf - self.min_output_vf)
 
-    def denormalize_output(self, data):
-        return data * (self.max_output - self.min_output) + self.min_output
+    def denormalize_output_vector_fields(self, data):
+        return data * (self.max_output_vf - self.min_output_vf) + self.min_output_vf
+
+    def compute_normalization_snapshots(self, training_data, validation_data):
+        self.min_input_s = np.min([elem[0].numpy() for elem in training_data + validation_data])
+        self.max_input_s = np.max([elem[0].numpy() for elem in training_data + validation_data])
+        self.min_output_s = np.min([elem[1].numpy() for elem in training_data + validation_data])
+        self.max_output_s = np.max([elem[1].numpy() for elem in training_data + validation_data])
+
+    def normalize_snapshots(self, data):
+        assert hasattr(self, 'min_input_s') and hasattr(self, 'max_input_s')
+        assert hasattr(self, 'min_output_s') and hasattr(self, 'max_output_s')
+        return [(self.normalize_input_snapshots(elem[0]),
+                 self.normalize_output_snapshots(elem[1])) for elem in data]
+
+    def normalize_input_snapshots(self, data):
+        return (data - self.min_input_s) / (self.max_input_s - self.min_input_s)
+
+    def normalize_output_snapshots(self, data):
+        return (data - self.min_output_s) / (self.max_output_s - self.min_output_s)
+
+    def denormalize_output_snapshots(self, data):
+        return data * (self.max_output_s - self.min_output_s) + self.min_output_s
 
     def multiple_restarts_training(self, training_data, validation_data, layers_sizes, restarts,
                                    trainer_params={}, training_params={}):
@@ -243,15 +366,15 @@ class NonlinearNeuralNetworkReductor:
 
         return best_neural_network, best_loss
 
-    def train_neural_network(self, layers_sizes, training_data, validation_data,
-                             trainer_params={}, training_params={}):
+    def train_neural_network(self, layers_sizes, training_data, validation_data, trainer_params={}, training_params={}):
         neural_network = FullyConnectedNetwork(layers_sizes)
         trainer = Trainer(neural_network, **trainer_params)
         best_loss, _ = trainer.train(training_data, validation_data, **training_params)
         return trainer.network, best_loss
 
-    def build_rom(self, vector_fields, neural_network):
-        rom = ReducedSpacetimeModel(self.reference_solution, vector_fields, neural_network,
-                                    self.geodesic_shooter, self.normalize_input,
-                                    self.denormalize_output)
+    def build_rom(self, vector_fields, snapshots, neural_network_vector_fields, neural_network_snapshots):
+        rom = ReducedSpacetimeModel(vector_fields, neural_network_vector_fields,
+                                    snapshots, neural_network_snapshots, self.geodesic_shooter,
+                                    self.normalize_input_vector_fields, self.denormalize_output_vector_fields,
+                                    self.normalize_input_snapshots, self.denormalize_output_snapshots)
         return rom
