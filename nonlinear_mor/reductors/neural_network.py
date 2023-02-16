@@ -8,6 +8,7 @@ from copy import deepcopy
 import pathlib
 
 import geodesic_shooting
+from geodesic_shooting.core import ScalarFunction
 from geodesic_shooting.utils.reduced import pod
 from geodesic_shooting.utils.helper_functions import project
 
@@ -47,19 +48,37 @@ class NonlinearNeuralNetworkReductor:
         summary += 'Training parameters (' + str(len(self.training_set)) + '): ' + str(self.training_set) + '\n'
         return summary
 
-    def compute_full_solutions(self, full_solutions_file=None):
+    def _prepare_solution(self, mu, padding=0):
+        u = self.fom.solve(mu)
+        if padding > 0:
+            spatial_shape = tuple([i + 2 * padding for i in u.full_shape])
+            u_new = ScalarFunction(spatial_shape=spatial_shape)
+            slice_original_function = tuple(np.s_[padding:-padding] * u.dim)
+            u_new[slice_original_function] = u
+            return u_new
+        else:
+            return u
+
+    def compute_full_solutions(self, full_solutions_file=None, padding=0):
         if full_solutions_file:
             with open(full_solutions_file, 'rb') as solution_file:
                 return pickle.load(solution_file)
-        return [(mu, self.fom.solve(mu)) for mu in self.training_set]
+        return [(mu, self._prepare_solution(mu)) for mu in self.training_set]
 
-    def perform_single_registration(self, input_, initial_vector_field=None, save_intermediate_results=True,
-                                    registration_params={'sigma': 0.1}, filepath_prefix='', interval=10):
-        assert len(input_) == 2
-        mu, u = input_
+    def perform_single_registration(self, input_values, initial_vector_field=None, save_intermediate_results=True,
+                                    registration_params={'sigma': 0.1}, filepath_prefix='', padding=0, interval=10):
+        assert len(input_values) == 2
+        mu, u = input_values
+
+        restriction = np.s_[...]
+        if padding > 0:
+            restriction = tuple([np.s_[padding:-padding]] * u.dim)
+
+        assert False, "The slicing is somehow not working!"
+
         result = self.geodesic_shooter.register(self.reference_solution, u,
                                                 initial_vector_field=initial_vector_field,
-                                                **registration_params, return_all=True)
+                                                **registration_params, restriction=restriction, return_all=True)
 
         v0 = result['initial_vector_field']
         ts = result['transformed_input']
@@ -83,7 +102,7 @@ class NonlinearNeuralNetworkReductor:
     def register_full_solutions(self, full_solutions, save_intermediate_results=True,
                                 registration_params={'sigma': 0.1, 'iterations': 20},
                                 num_workers=1, full_vector_fields_file=None,
-                                reuse_vector_fields=True, filepath_prefix='', interval=10):
+                                reuse_vector_fields=True, filepath_prefix='', padding=0, interval=10):
         if full_vector_fields_file:
             with open(full_vector_fields_file, 'rb') as vector_fields_file:
                 return pickle.load(vector_fields_file)
@@ -97,7 +116,7 @@ class NonlinearNeuralNetworkReductor:
                                                    save_intermediate_results=save_intermediate_results,
                                                    registration_params=deepcopy(registration_params),
                                                    filepath_prefix=filepath_prefix,
-                                                   interval=interval)
+                                                   padding=padding, interval=interval)
                     results = pool.map(perform_registration, full_solutions)
                     full_vector_fields = [r[0] for r in results]
                     transformed_snapshots = [r[1] for r in results]
@@ -115,7 +134,7 @@ class NonlinearNeuralNetworkReductor:
                                                               save_intermediate_results=save_intermediate_results,
                                                               registration_params=deepcopy(registration_params),
                                                               filepath_prefix=filepath_prefix,
-                                                              interval=interval)
+                                                              padding=padding, interval=interval)
                     full_vector_fields.append(vf)
                     transformed_snapshots.append(ts)
         return full_vector_fields, transformed_snapshots
@@ -125,8 +144,9 @@ class NonlinearNeuralNetworkReductor:
                registration_params={}, trainer_params={}, hidden_layers_vf=[20, 20, 20], hidden_layers_s=[20, 20, 20],
                training_params={}, validation_ratio_vf=0.1, validation_ratio_s=0.1, num_workers=1,
                full_solutions_file=None, full_vector_fields_file=None, reuse_vector_fields=True, filepath_prefix='',
-               interval=10):
+               padding=0, interval=10):
         assert isinstance(restarts, int) and restarts > 0
+        assert isinstance(padding, int)
         if not reduce_snapshots:
             assert basis_sizes_snapshots == [1]
 
@@ -139,6 +159,7 @@ class NonlinearNeuralNetworkReductor:
                                                                                  full_vector_fields_file,
                                                                                  reuse_vector_fields,
                                                                                  filepath_prefix,
+                                                                                 padding,
                                                                                  interval)
 
         with self.logger.block("Reducing vector fields using POD ..."):

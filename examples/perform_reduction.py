@@ -27,6 +27,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                                                      'vector fields'),
          reduce_snapshots: bool = Option(True, help='Determines whether or not to reduce the snapshots as well'),
          max_reduced_basis_size_snapshots: int = Option(50, help='Maximum dimension of reduced basis for snapshots'),
+         padding: int = Option(0, help='Amount of padding to add at each side of the snapshots'),
          num_workers: int = Option(1, help='Number of cores to use during registration; if greater than 1, the former '
                                            'vector field is not reused, otherwise the former vector field is used as '
                                            'initialization for the registration'),
@@ -112,7 +113,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                         full_vector_fields_file=full_vector_fields_file,
                                         registration_params=registration_params,
                                         hidden_layers_vf=hidden_layers_vector_field,
-                                        hidden_layers_s=hidden_layers_snapshots, filepath_prefix=filepath_prefix)
+                                        hidden_layers_s=hidden_layers_snapshots, filepath_prefix=filepath_prefix,
+                                        padding=padding)
 
     if write_results:
         outputs_filepath = f'{filepath_prefix}/outputs'
