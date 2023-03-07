@@ -31,6 +31,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                             'orthonormalizing the vector fields'),
          neural_network_training_restarts: int = Option(25, help='Maximum number of training restarts'),
          hidden_layers: List[int] = Option([20, 20, 20], help='Number of neurons in each hidden layer'),
+         interval: int = Option(1, help='Interval in which to sample the vector fields for plotting.'),
          full_vector_fields_filepath_prefix: str = Option(None, help='Filepath prefix for full vector fields file'),
          write_results: bool = Option(True, help='Determines whether or not to write results to disc (useful during '
                                                  'development)')):
@@ -91,7 +92,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                         restarts=neural_network_training_restarts, num_workers=num_workers,
                                         full_vector_fields_file=full_vector_fields_file,
                                         registration_params=registration_params, hidden_layers=hidden_layers,
-                                        filepath_prefix=filepath_prefix)
+                                        filepath_prefix=filepath_prefix, interval=interval)
 
     if write_results:
         outputs_filepath = f'{filepath_prefix}/outputs'

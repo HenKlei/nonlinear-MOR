@@ -71,8 +71,13 @@ class NonlinearNeuralNetworkReductor:
             transformed_input.save(f'{filepath}/mapped_solution_mu_{str(mu).replace(".", "_")}.png')
             (u - transformed_input).save(f'{filepath}/difference_mu_{str(mu).replace(".", "_")}.png')
             v0.save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}.png',
-                    plot_args={'title': '', 'interval': interval, 'color_length': False, 'show_axis': False, 'scale': None,
-                               'axis': None, 'figsize': (20, 20)})
+                    plot_args={'title': '', 'interval': interval, 'color_length': False, 'show_axis': False,
+                               'scale': None, 'axis': None, 'figsize': (20, 20)})
+            v0.get_magnitude().save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}_magnitude.png')
+            v0.get_component_as_function(0).save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}'
+                                                 '_x_component.png')
+            v0.get_component_as_function(1).save(f'{filepath}/full_vector_field_mu_{str(mu).replace(".", "_")}'
+                                                 '_y_component.png')
             norm = (u - transformed_input).norm / u.norm
             with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
                 errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\n")
