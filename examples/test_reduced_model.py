@@ -37,7 +37,8 @@ def main(filepath: str = Argument(..., help='Path to the folder containing the r
             tic = time.perf_counter()
             u_red = rom.solve(mu, filepath_prefix=results_filepath)
             time_rom = time.perf_counter() - tic
-            u_red.save(f'{results_filepath}/result_mu_{str(mu).replace(".", "_")}.png')
+            u_red.save(f'{results_filepath}/result_mu_{str(mu).replace(".", "_")}.png',
+                       title=f"Reduced solution for mu={mu}")
             u_red.plot()
             tikzplotlib.save(f'{results_filepath}/figures_tex/result_mu_{str(mu).replace(".", "_")}.tex')
             plt.close()
@@ -45,11 +46,13 @@ def main(filepath: str = Argument(..., help='Path to the folder containing the r
             tic = time.perf_counter()
             u_full = fom.solve(mu)
             time_fom = time.perf_counter() - tic
-            u_full.save(f'{results_filepath}/full_solution_mu_{str(mu).replace(".", "_")}.png')
+            u_full.save(f'{results_filepath}/full_solution_mu_{str(mu).replace(".", "_")}.png',
+                        title=f"Full solution for mu={mu}")
             u_full.plot()
             tikzplotlib.save(f'{results_filepath}/figures_tex/full_solution_mu_{str(mu).replace(".", "_")}.tex')
             plt.close()
-            (u_red - u_full).save(f'{results_filepath}/difference_mu_{str(mu).replace(".", "_")}.png')
+            (u_red - u_full).save(f'{results_filepath}/difference_mu_{str(mu).replace(".", "_")}.png',
+                                  title=f"Difference for mu={mu}")
             (u_red - u_full).plot()
             tikzplotlib.save(f'{results_filepath}/figures_tex/difference_mu_{str(mu).replace(".", "_")}.tex')
             plt.close()
