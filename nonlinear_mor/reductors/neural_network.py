@@ -75,6 +75,9 @@ class NonlinearNeuralNetworkReductor:
             v0.save(f'{filepath}/full_vector_field_mu_{mu_as_string}.png',
                     plot_args={'title': '', 'interval': interval, 'color_length': False, 'show_axis': False,
                                'scale': None, 'axis': None, 'figsize': (20, 20)})
+            v0.save(f'{filepath}/full_vector_field_mu_{mu_as_string}_color.png',
+                    plot_args={'title': '', 'interval': interval, 'color_length': True, 'show_axis': False,
+                               'scale': None, 'axis': None, 'figsize': (20, 20)})
             v0.get_magnitude().save(f'{filepath}/full_vector_field_mu_{mu_as_string}_magnitude.png')
             for d in range(v0.dim):
                 v0.get_component_as_function(d).save(f'{filepath}/full_vector_field_mu_{mu_as_string}_'
