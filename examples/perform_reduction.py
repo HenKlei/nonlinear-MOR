@@ -23,6 +23,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          alpha: float = Option(100., help='Registration parameter `alpha`'),
          exponent: int = Option(2, help='Registration parameter `exponent`'),
          sigma: float = Option(0.1, help='Registration parameter `sigma`'),
+         oversampling_size: int = Option(0, help='Margin in pixels used for oversampling'),
          max_reduced_basis_size: int = Option(50, help='Maximum dimension of reduced basis for vector fields'),
          num_workers: int = Option(1, help='Number of cores to use during registration; if greater than 1, the former '
                                            'vector field is not reused, otherwise the former vector field is used as '
@@ -54,8 +55,17 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
 
     parameters = fom.parameter_space.sample(num_training_parameters, sampling_mode)
 
+    if fom.dim == 1:
+        restriction = np.s_[oversampling_size:-oversampling_size, oversampling_size:-oversampling_size]
+    elif fom.dim == 2:
+        restriction = np.s_[oversampling_size:-oversampling_size, oversampling_size:-oversampling_size,
+                            oversampling_size:-oversampling_size]
+    elif fom.dim == 3:
+        restriction = np.s_[oversampling_size:-oversampling_size, oversampling_size:-oversampling_size,
+                            oversampling_size:-oversampling_size, oversampling_size:-oversampling_size]
+
     gs_smoothing_params = {'alpha': alpha, 'exponent': exponent}
-    registration_params = {'sigma': sigma}
+    registration_params = {'sigma': sigma, 'restriction': restriction}
     assert max_reduced_basis_size <= num_training_parameters
     basis_sizes = range(1, max_reduced_basis_size + 1)
 

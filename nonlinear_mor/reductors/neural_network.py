@@ -54,7 +54,7 @@ class NonlinearNeuralNetworkReductor:
         return [(mu, self.fom.solve(mu)) for mu in self.training_set]
 
     def perform_single_registration(self, input_, initial_vector_field=None, save_intermediate_results=True,
-                                    registration_params={'sigma': 0.1}, filepath_prefix='', interval=10):
+                                    registration_params={}, filepath_prefix='', interval=10):
         assert len(input_) == 2
         mu, u = input_
         result = self.geodesic_shooter.register(self.reference_solution, u,
@@ -88,10 +88,9 @@ class NonlinearNeuralNetworkReductor:
 
         return v0
 
-    def register_full_solutions(self, full_solutions, save_intermediate_results=True,
-                                registration_params={'sigma': 0.1, 'iterations': 20},
-                                num_workers=1, full_vector_fields_file=None,
-                                reuse_vector_fields=True, filepath_prefix='', interval=10):
+    def register_full_solutions(self, full_solutions, save_intermediate_results=True, registration_params={},
+                                num_workers=1, full_vector_fields_file=None, reuse_vector_fields=True,
+                                filepath_prefix='', interval=10):
         if full_vector_fields_file:
             with open(full_vector_fields_file, 'rb') as vector_fields_file:
                 return pickle.load(vector_fields_file)
