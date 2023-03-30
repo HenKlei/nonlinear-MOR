@@ -69,7 +69,7 @@ class NonlinearNeuralNetworkReductor:
             pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
             transformed_input = result['transformed_input']
             mu_as_string = str(mu).replace(".", "_")
-            save_plots_registration_results(result, filepath=f'{filepath}/mu_{mu_as_string}_')
+            save_plots_registration_results(result, filepath=f'{filepath}/mu_{mu_as_string}/')
 
             norm = (u - transformed_input).norm / u.norm
             with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:

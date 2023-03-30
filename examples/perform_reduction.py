@@ -25,6 +25,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          exponent: int = Option(2, help='Registration parameter `exponent`'),
          sigma: float = Option(0.1, help='Registration parameter `sigma`'),
          oversampling_size: int = Option(0, help='Margin in pixels used for oversampling'),
+         optimization_method: str = Option('L-BFGS-B', help='Optimizer used for geodesic shooting'),
          max_reduced_basis_size: int = Option(50, help='Maximum dimension of reduced basis for vector fields'),
          num_workers: int = Option(1, help='Number of cores to use during registration; if greater than 1, the former '
                                            'vector field is not reused, otherwise the former vector field is used as '
@@ -64,9 +65,11 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     elif fom.dim == 3:
         restriction = np.s_[oversampling_size:-oversampling_size, oversampling_size:-oversampling_size,
                             oversampling_size:-oversampling_size, oversampling_size:-oversampling_size]
+    if oversampling_size == 0:
+        restriction = np.s_[...]
 
     gs_smoothing_params = {'alpha': alpha, 'exponent': exponent}
-    registration_params = {'sigma': sigma, 'restriction': restriction}
+    registration_params = {'sigma': sigma, 'restriction': restriction, 'optimization_method': optimization_method}
     assert max_reduced_basis_size <= num_training_parameters
     basis_sizes = range(1, max_reduced_basis_size + 1)
 
