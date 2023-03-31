@@ -69,7 +69,7 @@ class NonlinearNeuralNetworkReductor:
             pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
             transformed_input = result['transformed_input']
             mu_as_string = str(mu).replace(".", "_")
-            save_plots_registration_results(result, filepath=f'{filepath}/mu_{mu_as_string}/')
+            save_plots_registration_results(result, filepath=f'{filepath}/mu_{mu_as_string}/', postfix=f' mu={mu}')
 
             absolute_error = (u - transformed_input).norm
             relative_error = absolute_error / u.norm
