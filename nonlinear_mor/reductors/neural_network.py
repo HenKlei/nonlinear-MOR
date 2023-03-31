@@ -83,7 +83,9 @@ class NonlinearNeuralNetworkReductor:
             with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
                 errors_file.write(f"{mu}\t{absolute_error_restricted}\t{relative_error_restricted}\t"
                                   f"{absolute_error}\t{relative_error}\t"
-                                  f"{result['iterations']}\t{result['time']}\t{result['reason_registration_ended']}\n")
+                                  f"{result['iterations']}\t{result['time']}\t{result['reason_registration_ended']}\t"
+                                  f"{result['energy_regularizer']}\t{result['energy_intensity_unscaled']}\t"
+                                  f"{result['energy_intensity']}\t{result['energy']}\t{result['norm_gradient']}\n")
 
         return v0
 
@@ -100,7 +102,8 @@ class NonlinearNeuralNetworkReductor:
             errors_file.write("Parameter\tAbsolute error on restriction\tRelative error on restriction\t"
                               "Absolute error on full domain\tRelative error on full domain\t"
                               "Number of iterations\tRequired time for registration\t"
-                              "Reason for registration algorithm to stop\n")
+                              "Reason for registration algorithm to stop\tEnergy regularizer\t"
+                              "Energy intensity unscaled\tEnergy intensity\tEnergy\tNorm of gradient\n")
 
         with self.logger.block("Computing mappings and vector fields ..."):
             if num_workers > 1:
