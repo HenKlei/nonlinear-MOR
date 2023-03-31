@@ -71,9 +71,19 @@ class NonlinearNeuralNetworkReductor:
             mu_as_string = str(mu).replace(".", "_")
             save_plots_registration_results(result, filepath=f'{filepath}/mu_{mu_as_string}/')
 
-            norm = (u - transformed_input).norm / u.norm
+            absolute_error = (u - transformed_input).norm
+            relative_error = absolute_error / u.norm
+            restriction = registration_params.get('restriction')
+            if restriction:
+                absolute_error_restricted = (u - transformed_input).get_norm(restriction=restriction)
+                relative_error_restricted = absolute_error_restricted / u.get_norm(restriction=restriction)
+            else:
+                absolute_error_restricted = absolute_error
+                relative_error_restricted = relative_error
             with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
-                errors_file.write(f"{mu}\t{norm}\t{result['iterations']}\t{result['time']}\n")
+                errors_file.write(f"{mu}\t{absolute_error_restricted}\t{relative_error_restricted}\t"
+                                  f"{absolute_error}\t{relative_error}\t"
+                                  f"{result['iterations']}\t{result['time']}\t{result['reason_registration_ended']}\n")
 
         return v0
 
@@ -83,6 +93,15 @@ class NonlinearNeuralNetworkReductor:
         if full_vector_fields_file:
             with open(full_vector_fields_file, 'rb') as vector_fields_file:
                 return pickle.load(vector_fields_file)
+
+        filepath = filepath_prefix + '/intermediate_results'
+        pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
+        with open(f'{filepath}/relative_mapping_errors.txt', 'a') as errors_file:
+            errors_file.write("Parameter\tAbsolute error on restriction\tRelative error on restriction\t"
+                              "Absolute error on full domain\tRelative error on full domain\t"
+                              "Number of iterations\tRequired time for registration\t"
+                              "Reason for registration algorithm to stop\n")
+
         with self.logger.block("Computing mappings and vector fields ..."):
             if num_workers > 1:
                 if reuse_vector_fields:
@@ -139,7 +158,7 @@ class NonlinearNeuralNetworkReductor:
                          fps=max(1, len(self.training_set) // 10))
             except Exception as e:
                 self.logger.warning(f"Could not save animation! Error: {e}")
-            ani = parameter_dependent_vector_field.get_magnitude_series().animate(title="Magnitude of parameter "
+            ani = parameter_dependent_vector_field.get_magnitude_series().animate(title="Magnitude of parameter-"
                                                                                         "dependent vector field")
             try:
                 ani.save(f'{filepath}/magnitude_parameter_dependent_vector_field.gif', writer='imagemagick',

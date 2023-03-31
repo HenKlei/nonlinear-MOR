@@ -7,6 +7,7 @@ from typer import Argument, Option, run
 from typing import List
 
 from nonlinear_mor.reductors import NonlinearNeuralNetworkReductor
+from nonlinear_mor.utils.logger import getLogger
 
 from load_model import load_full_order_model
 
@@ -39,9 +40,12 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          write_results: bool = Option(True, help='Determines whether or not to write results to disc (useful during '
                                                  'development)')):
 
+    logger = getLogger('nonlinear_mor.perform_reduction')
+
     timestr = time.strftime("%Y%m%d-%H%M%S")
     filepath_prefix = f'results_nonlinear_reductor_{timestr}'
     if write_results:
+        logger.info(f'Creating directory for results at "{filepath_prefix}" ...')
         pathlib.Path(filepath_prefix).mkdir(parents=True, exist_ok=True)
 
     spatial_shape = tuple(spatial_shape)
@@ -78,19 +82,24 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     else:
         full_vector_fields_file = None
 
+    logger.info('Setting up the reductor ...')
     reductor = NonlinearNeuralNetworkReductor(fom, parameters, reference_parameter,
                                               gs_smoothing_params=gs_smoothing_params)
 
     if write_results:
+        logger.info(f'Writing summary file to "{filepath_prefix}/summary.txt" ...')
         reductor_summary = reductor.create_summary(registration_params=registration_params)
         fom_summary = fom.create_summary()
         reduction_summary = ('Maximum dimension of the reduced basis: ' + str(max_reduced_basis_size) + '\n' +
                              'Number of training parameters: ' + str(num_training_parameters) + '\n' +
                              'Parameter sampling mode: ' + str(sampling_mode) + '\n' +
+                             'Oversampling size: ' + str(oversampling_size) + '\n' +
+                             'Optimization method for registration: ' + optimization_method + '\n' +
                              'Number of training restarts in neural network training: ' +
                              str(neural_network_training_restarts) + '\n' +
                              'Hidden layers of neural network: ' + str(hidden_layers) + '\n' +
-                             'L2-product used: ' + str(l2_prod) + '\n')
+                             'L2-product used: ' + str(l2_prod) + '\n' +
+                             'Number of workers: ' + str(num_workers) + '\n')
 
         with open(f'{filepath_prefix}/summary.txt', 'a') as summary_file:
             summary_file.write('Example: ' + example)
@@ -101,14 +110,16 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             summary_file.write('\n\n========================================================\n\n')
             summary_file.write(reduction_summary)
 
-    roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, l2_prod=l2_prod, return_all=True,
-                                        save_intermediate_results=write_results,
-                                        restarts=neural_network_training_restarts, num_workers=num_workers,
-                                        full_vector_fields_file=full_vector_fields_file,
-                                        registration_params=registration_params, hidden_layers=hidden_layers,
-                                        filepath_prefix=filepath_prefix, interval=interval)
+    with logger.block('Performung reduction ...'):
+        roms, output_dict = reductor.reduce(basis_sizes=basis_sizes, l2_prod=l2_prod, return_all=True,
+                                            save_intermediate_results=write_results,
+                                            restarts=neural_network_training_restarts, num_workers=num_workers,
+                                            full_vector_fields_file=full_vector_fields_file,
+                                            registration_params=registration_params, hidden_layers=hidden_layers,
+                                            filepath_prefix=filepath_prefix, interval=interval)
 
     if write_results:
+        logger.info('Collecting some more results and writing them to disc ...')
         outputs_filepath = f'{filepath_prefix}/outputs'
         pathlib.Path(outputs_filepath).mkdir(parents=True, exist_ok=True)
         with open(f'{outputs_filepath}/output_dict_rom', 'wb') as output_file:
