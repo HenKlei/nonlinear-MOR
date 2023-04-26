@@ -20,11 +20,11 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          sampling_mode: str = Option('uniform', help='Sampling mode for sampling the training parameters'),
          reference_parameter: str = Option('0.25', help='Reference parameter, either a number or a list of numbers',
                                            callback=ast.literal_eval),
-         alpha: float = Option(100., help='Registration parameter `alpha`'),
-         alpha_red: float = Option(100., help='Registration parameter `alpha` for reduced geodesic shooting'),
-         exponent: int = Option(2, help='Registration parameter `exponent`'),
-         exponent_red: int = Option(2, help='Registration parameter `exponent` for reduced geodesic shooting'),
-         sigma: float = Option(0.1, help='Registration parameter `sigma`'),
+         alpha: float = Option(0.01, help='Registration parameter `alpha`'),
+         alpha_red: float = Option(0.01, help='Registration parameter `alpha` for reduced geodesic shooting'),
+         exponent: int = Option(1, help='Registration parameter `exponent`'),
+         exponent_red: int = Option(1, help='Registration parameter `exponent` for reduced geodesic shooting'),
+         sigma: float = Option(0.01, help='Registration parameter `sigma`'),
          max_reduced_basis_size: int = Option(50, help='Maximum dimension of reduced basis for vector fields'),
          num_workers: int = Option(1, help='Number of cores to use during registration; if greater than 1, the former '
                                            'vector field is not reused, otherwise the former vector field is used as '
