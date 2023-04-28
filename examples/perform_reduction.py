@@ -24,6 +24,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                            callback=ast.literal_eval),
          alpha: float = Option(0.01, help='Registration parameter `alpha`'),
          exponent: int = Option(1, help='Registration parameter `exponent`'),
+         gamma: float = Option(1., help='Registration parameter `gamma`'),
          sigma: float = Option(0.01, help='Registration parameter `sigma`'),
          oversampling_size: int = Option(0, help='Margin in pixels used for oversampling'),
          optimization_method: str = Option('L-BFGS-B', help='Optimizer used for geodesic shooting'),
@@ -72,7 +73,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     if oversampling_size == 0:
         restriction = np.s_[...]
 
-    gs_smoothing_params = {'alpha': alpha, 'exponent': exponent}
+    gs_smoothing_params = {'alpha': alpha, 'exponent': exponent, 'gamma': gamma}
     registration_params = {'sigma': sigma, 'restriction': restriction, 'optimization_method': optimization_method}
     assert max_reduced_basis_size <= num_training_parameters
     basis_sizes = range(1, max_reduced_basis_size + 1)
