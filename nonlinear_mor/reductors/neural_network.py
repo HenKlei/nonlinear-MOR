@@ -110,6 +110,10 @@ class NonlinearNeuralNetworkReductor:
                 if reuse_vector_fields:
                     self.logger.warning(f"Reusing vector fields not possible with {num_workers} workers ...")
                 with multiprocessing.Pool(num_workers) as pool:
+                    exact_solution = None
+                    if hasattr(self.fom, 'exact_solution'):
+                        exact_solution = self.fom.exact_solution
+                        del self.fom.exact_solution  # necessary since otherwise pickling is not possible
                     perform_registration = partial(self.perform_single_registration,
                                                    initial_vector_field=None,
                                                    save_intermediate_results=save_intermediate_results,
@@ -117,6 +121,8 @@ class NonlinearNeuralNetworkReductor:
                                                    filepath_prefix=filepath_prefix,
                                                    interval=interval)
                     full_vector_fields = pool.map(perform_registration, full_solutions)
+                    if exact_solution is not None:
+                        self.fom.exact_solution = exact_solution
             else:
                 full_vector_fields = []
                 for i, (mu, u) in enumerate(full_solutions):
