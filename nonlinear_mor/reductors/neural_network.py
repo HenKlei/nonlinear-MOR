@@ -21,11 +21,17 @@ from nonlinear_mor.utils.versioning import get_git_hash, get_version
 
 class NonlinearNeuralNetworkReductor:
     def __init__(self, fom, training_set, reference_parameter,
-                 gs_smoothing_params={'alpha': 1000., 'exponent': 3}):
+                 gs_smoothing_params={'alpha': 1000., 'exponent': 3},
+                 restriction=np.s_[...], value_on_oversampling=None):
         self.fom = fom
         self.training_set = training_set
         self.reference_parameter = reference_parameter
         self.reference_solution = self.fom.solve(reference_parameter)
+
+        if value_on_oversampling is not None:
+            mask = np.ones(self.reference_solution.full_shape, bool)
+            mask[restriction] = 0
+            self.reference_solution[mask] = value_on_oversampling
 
         self.geodesic_shooter = geodesic_shooting.GeodesicShooting(**gs_smoothing_params)
 

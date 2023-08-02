@@ -30,6 +30,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          optimization_method: str = Option('L-BFGS-B', help='Optimizer used for geodesic shooting'),
          max_reduced_basis_size: int = Option(50, help='Maximum dimension of reduced basis for vector fields'),
          num_workers: int = Option(1, help='Number of cores to use during registration; if greater than 1, the former '
+         value_on_oversampling: float = Option(default=None, help='Value to set for the target snapshots '
+                                                                  'on the oversampling domain'),
                                            'vector field is not reused, otherwise the former vector field is used as '
                                            'initialization for the registration'),
          l2_prod: bool = Option(False, help='Determines whether or not to use the L2-product as inner product for '
@@ -85,7 +87,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
 
     logger.info('Setting up the reductor ...')
     reductor = NonlinearNeuralNetworkReductor(fom, parameters, reference_parameter,
-                                              gs_smoothing_params=gs_smoothing_params)
+                                              gs_smoothing_params=gs_smoothing_params,
+                                              restriction=restriction, value_on_oversampling=value_on_oversampling)
 
     if write_results:
         logger.info(f'Writing summary file to "{filepath_prefix}/summary.txt" ...')
