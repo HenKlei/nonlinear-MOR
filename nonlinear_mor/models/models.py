@@ -85,7 +85,9 @@ class WrappedpyMORModel(Model):
         return ScalarFunction(data=u)
 
     def visualize(self, u):
-        u = np.moveaxis(u.to_numpy(), -1, 0)
+        if not isinstance(u, np.ndarray):
+            u = u.to_numpy()
+        u = np.moveaxis(u, -1, 0)
         U = self.model.operator.range.from_numpy(u.reshape(u.shape[0], -1))
         self.model.visualize(U)
 
