@@ -8,7 +8,7 @@ from pymor.analyticalproblems.functions import ConstantFunction, ExpressionFunct
 from pymor.discretizers.builtin import discretize_instationary_fv
 
 
-def burgers_problem(circle=False, parameter_ranges=[(.25, 1.5), (1, 2)]):
+def burgers_problem(parameter_ranges, circle=False):
     """One-dimensional Burgers-type problem.
 
     The problem is to solve ::
@@ -49,12 +49,13 @@ def burgers_problem(circle=False, parameter_ranges=[(.25, 1.5), (1, 2)]):
 
 def create_model(spatial_shape, num_time_steps):
     assert len(spatial_shape) == 1
-    problem = burgers_problem()
+    parameter_ranges = [(0.25, 1.5), (1, 3)]
+    problem = burgers_problem(parameter_ranges)
     model, _ = discretize_instationary_fv(
         problem,
         diameter=1 / spatial_shape[0],
         num_flux='engquist_osher',
         nt=num_time_steps
     )
-    parameter_space = CubicParameterSpace([(0.25, 1.5), (1, 3)])
+    parameter_space = CubicParameterSpace(parameter_ranges)
     return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model)

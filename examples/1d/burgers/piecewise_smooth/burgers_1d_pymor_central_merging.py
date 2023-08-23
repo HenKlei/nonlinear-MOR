@@ -8,7 +8,7 @@ from pymor.analyticalproblems.functions import ConstantFunction, ExpressionFunct
 from pymor.discretizers.builtin import discretize_instationary_fv
 
 
-def burgers_problem(circle=False, parameter_range=(.25, 1.5)):
+def burgers_problem(parameter_ranges, circle=False):
     """One-dimensional Burgers-type problem.
 
     The problem is to solve ::
@@ -29,39 +29,31 @@ def burgers_problem(circle=False, parameter_range=(.25, 1.5)):
     dirichlet_data = ConstantFunction(dim_domain=1, value=0.)
 
     return InstationaryProblem(
-
         StationaryProblem(
             domain=CircleDomain([-1, 1]) if circle else LineDomain([-1, 1], right=None),
-
             dirichlet_data=dirichlet_data,
-
             rhs=None,
-
             nonlinear_advection=ExpressionFunction('mu1[0] * x**2 / 2.',
                                                    1, {'mu1': 1}),
-
             nonlinear_advection_derivative=ExpressionFunction('mu1[0] * x',
                                                               1, {'mu1': 1}),
         ),
-
         T=1.,
-
         initial_data=initial_data,
-
-        parameter_ranges={'mu1': parameter_range},
-
+        parameter_ranges={'mu1': parameter_ranges[0]},
         name=f"burgers_problem({circle})"
     )
 
 
 def create_model(spatial_shape, num_time_steps):
     assert len(spatial_shape) == 1
-    problem = burgers_problem()
+    parameter_ranges = [(0.75, 1.75)]
+    problem = burgers_problem(parameter_ranges)
     model, _ = discretize_instationary_fv(
         problem,
         diameter=2 / spatial_shape[0],
         num_flux='simplified_engquist_osher',
         nt=num_time_steps
     )
-    parameter_space = CubicParameterSpace([(0.75, 2.0)])
+    parameter_space = CubicParameterSpace(parameter_ranges)
     return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model)
