@@ -47,7 +47,7 @@ def burgers_problem(parameter_ranges, circle=False):
 
 def create_model(spatial_shape, num_time_steps):
     assert len(spatial_shape) == 1
-    parameter_ranges = [(1.0, 2.0), (0.5, 1.)]
+    parameter_ranges = [(1.5, 2.0), (0.5, 1.)]
     problem = burgers_problem(parameter_ranges)
     model, _ = discretize_instationary_fv(
         problem,

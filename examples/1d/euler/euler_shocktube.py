@@ -9,7 +9,7 @@ from nonlinear_mor.models import WrappedPyClawModel
 from nonlinear_mor.utils.parameters import CubicParameterSpace
 
 
-def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.), (0., 1.)], t_final=0.6):
+def create_model(spatial_shape, num_time_steps, spatial_extent=[(-1., 1.)], t_final=0.4):
     def call_pyclaw(claw, domain, mu):
         riemann_solver = riemann.euler_1D_py.euler_hllc_1D
         claw.solver = pyclaw.ClawSolver1D(riemann_solver)
@@ -18,8 +18,10 @@ def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.), (0., 1
         claw.solver.bc_lower[0] = pyclaw.BC.extrap
         claw.solver.bc_upper[0] = pyclaw.BC.extrap
 
+        xlower = spatial_extent[0][0]
+        xupper = spatial_extent[0][1]
         mx = spatial_shape[0]
-        x = pyclaw.Dimension(-1.0, 1.0, mx, name='x')
+        x = pyclaw.Dimension(xlower, xupper, mx, name='x')
         domain = pyclaw.Domain([x])
         state = pyclaw.State(domain, num_eqn)
 
@@ -28,7 +30,7 @@ def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.), (0., 1
 
         x = state.grid.x.centers
 
-        rho_l = 1.
+        rho_l = 1.  # 0.5 as value is interesting here!
         rho_r = 1./8
         p_l = 1.
         p_r = 0.1
@@ -38,7 +40,7 @@ def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.), (0., 1
         pressure = (x < 0.)*p_l + (x >= 0.)*p_r
         state.q[energy, :] = pressure / (mu - 1.) + 0.5 * state.q[density, :] * velocity**2
 
-        claw.tfinal = 0.4
+        claw.tfinal = t_final
         claw.solution = pyclaw.Solution(state, domain)
         claw.num_output_times = num_time_steps - 1
         claw.setplot = setplot
@@ -52,4 +54,4 @@ def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.), (0., 1
 
     parameter_space = CubicParameterSpace([(1.2, 3)])
 
-    return WrappedPyClawModel(spatial_shape, num_time_steps, parameter_space, spatial_extend, t_final, call_pyclaw)
+    return WrappedPyClawModel(spatial_shape, num_time_steps, parameter_space, spatial_extent, t_final, call_pyclaw)

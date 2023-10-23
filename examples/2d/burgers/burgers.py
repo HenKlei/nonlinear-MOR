@@ -8,7 +8,7 @@ from nonlinear_mor.utils.parameters import CubicParameterSpace
 
 
 def create_model(spatial_shape, num_time_steps):
-    assert spatial_shape[0] == 2*spatial_shape[1]
+    assert spatial_shape[0] == 2 * spatial_shape[1]
     problem = burgers_problem_2d(vx=1., vy=1., initial_data_type='sin',
                                  parameter_range=(0, 1e42), torus=False)
     model, _ = discretize_instationary_fv(
