@@ -89,18 +89,21 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             f.write(summary)
 
     full_vector_fields = []
+    snapshots = []
 
     initial_vector_field = None
 
     for mu in parameters:
         print(f"mu: {mu}")
         u = fom.solve(mu)
+        snapshots.append(u)
+        _, S = pod(snapshots, num_modes=1, product_operator=None, return_singular_values='all')
         result = geodesic_shooter.register(u_ref, u, **registration_params, return_all=True,
                                            initial_vector_field=initial_vector_field)
         if reuse_initial_vector_field:
             initial_vector_field = result['initial_vector_field']
         full_vector_fields.append(result['initial_vector_field'])
-        plot_registration_results(result, show_restriction_boundary=True)
+#        plot_registration_results(result, show_restriction_boundary=True)
         if write_results:
             save_plots_registration_results(result, filepath=f'{filepath_prefix}/mu_{str(mu).replace(".", "_")}/',
                                             show_restriction_boundary=True)
@@ -135,7 +138,10 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     if write_results:
         filepath = filepath_prefix + '/singular_values'
         pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
-        with open(f'{filepath}/singular_values.txt', 'a') as singular_values_file:
+        with open(f'{filepath}/singular_values_snapshots.txt', 'a') as singular_values_file:
+            for s in S:
+                singular_values_file.write(f"{s}\n")
+        with open(f'{filepath}/singular_values_initial_vector_fields.txt', 'a') as singular_values_file:
             for val in singular_values:
                 singular_values_file.write(f"{val}\n")
 
