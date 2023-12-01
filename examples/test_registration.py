@@ -10,6 +10,7 @@ from geodesic_shooting.utils.reduced import pod
 
 from load_model import load_full_order_model
 from geodesic_shooting.utils.summary import plot_registration_results, save_plots_registration_results
+from nonlinear_mor.utils.versioning import get_git_hash, get_version
 
 
 def main(example: str = Argument(..., help='Path to the example to execute, for instance '
@@ -69,22 +70,59 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
         u_ref[mask] = value_on_oversampling
     geodesic_shooter = geodesic_shooting.GeodesicShooting(**gs_smoothing_params)
 
+    # write summary
+    summary = '========================================================\n'
+    summary += 'Git hash of nonlinear_mor-module: ' + get_git_hash() + '\n'
+    summary += '========================================================\n'
+    summary += 'FOM: ' + str(fom) + '\n'
+    summary += 'Geodesic Shooting:\n'
+    summary += '------------------\n'
+    summary += 'Version: ' + get_version(geodesic_shooting) + '\n'
+    summary += str(geodesic_shooter) + '\n'
+    summary += '------------------\n'
+    summary += 'Registration parameters: ' + str(registration_params) + '\n'
+    summary += '------------------\n'
+    summary += 'Reference parameter: ' + str(reference_parameter) + '\n'
+    summary += 'Parameters (' + str(len(parameters)) + '): ' + str(parameters) + '\n'
+    if write_results:
+        with open(f'{filepath_prefix}/summary.txt', 'a') as f:
+            f.write(summary)
+
     full_vector_fields = []
+    snapshots = []
 
     initial_vector_field = None
 
     for mu in parameters:
         print(f"mu: {mu}")
         u = fom.solve(mu)
+        snapshots.append(u)
+        _, S = pod(snapshots, num_modes=1, product_operator=None, return_singular_values='all')
         result = geodesic_shooter.register(u_ref, u, **registration_params, return_all=True,
                                            initial_vector_field=initial_vector_field)
         if reuse_initial_vector_field:
             initial_vector_field = result['initial_vector_field']
         full_vector_fields.append(result['initial_vector_field'])
-        plot_registration_results(result, show_restriction_boundary=True)
+#        plot_registration_results(result, show_restriction_boundary=True)
         if write_results:
             save_plots_registration_results(result, filepath=f'{filepath_prefix}/mu_{str(mu).replace(".", "_")}/',
                                             show_restriction_boundary=True)
+            transformed_input = result['transformed_input']
+            absolute_error = (u - transformed_input).norm
+            relative_error = absolute_error / u.norm
+            restriction = registration_params.get('restriction')
+            if restriction:
+                absolute_error_restricted = (u - transformed_input).get_norm(restriction=restriction)
+                relative_error_restricted = absolute_error_restricted / u.get_norm(restriction=restriction)
+            else:
+                absolute_error_restricted = absolute_error
+                relative_error_restricted = relative_error
+            with open(f'{filepath_prefix}/relative_mapping_errors.txt', 'a') as errors_file:
+                errors_file.write(f"{mu}\t{absolute_error_restricted}\t{relative_error_restricted}\t"
+                                  f"{absolute_error}\t{relative_error}\t"
+                                  f"{result['iterations']}\t{result['time']}\t{result['reason_registration_ended']}\t"
+                                  f"{result['energy_regularizer']}\t{result['energy_intensity_unscaled']}\t"
+                                  f"{result['energy_intensity']}\t{result['energy']}\t{result['norm_gradient']}\n")
 
     if l2_prod:
         product_operator = None
@@ -100,7 +138,10 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     if write_results:
         filepath = filepath_prefix + '/singular_values'
         pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
-        with open(f'{filepath}/singular_values.txt', 'a') as singular_values_file:
+        with open(f'{filepath}/singular_values_snapshots.txt', 'a') as singular_values_file:
+            for s in S:
+                singular_values_file.write(f"{s}\n")
+        with open(f'{filepath}/singular_values_initial_vector_fields.txt', 'a') as singular_values_file:
             for val in singular_values:
                 singular_values_file.write(f"{val}\n")
 
