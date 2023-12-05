@@ -92,6 +92,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     snapshots = []
 
     initial_vector_field = None
+    S = []
 
     for mu in parameters:
         print(f"mu: {mu}")
