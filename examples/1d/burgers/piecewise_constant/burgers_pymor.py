@@ -64,4 +64,5 @@ def create_model(spatial_shape, num_time_steps):
         nt=num_time_steps
     )
     parameter_space = CubicParameterSpace([(0.25, 1.5)])
-    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model)
+    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model,
+                             name='1dBurgersPiecewiseConstantpyMOR')

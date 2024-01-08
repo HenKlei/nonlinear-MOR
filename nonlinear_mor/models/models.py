@@ -36,8 +36,8 @@ class Model:
 
 class AnalyticalModel(Model):
     def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None, exact_solution=None,
-                 spatial_extend=[(0., 1.), ], temporal_extend=(0., 1.)):
-        super().__init__(spatial_shape, num_time_steps, parameter_space, name='AnalyticalModel')
+                 spatial_extend=[(0., 1.), ], temporal_extend=(0., 1.), name='AnalyticalModel'):
+        super().__init__(spatial_shape, num_time_steps, parameter_space, name=name)
         self.exact_solution = exact_solution
         self.spatial_extend = spatial_extend
         self.temporal_extend = temporal_extend
@@ -65,8 +65,9 @@ class AnalyticalModel(Model):
 
 
 class WrappedpyMORModel(Model):
-    def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None, model=None):
-        super().__init__(spatial_shape, num_time_steps, parameter_space, name='WrappedpyMORModel')
+    def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None, model=None,
+                 name='WrappedpyMORModel'):
+        super().__init__(spatial_shape, num_time_steps, parameter_space, name=name)
         self.model = model
 
     def create_summary(self):
@@ -99,8 +100,8 @@ if PYCLAW:
 
     class WrappedPyClawModel(Model):
         def __init__(self, spatial_shape=(100, 100), num_time_steps=100, parameter_space=None,
-                     spatial_extend=[(0., 1.), (0., 1.)], t_final=1., call_pyclaw=None):
-            super().__init__(spatial_shape, num_time_steps, parameter_space, name='WrappedPyClawModel')
+                     spatial_extend=[(0., 1.), (0., 1.)], t_final=1., call_pyclaw=None, name='WrappedPyClawModel'):
+            super().__init__(spatial_shape, num_time_steps, parameter_space, name=name)
             self.call_pyclaw = call_pyclaw
             lower_bounds = [x[0] for x in spatial_extend]
             upper_bounds = [x[1] for x in spatial_extend]
