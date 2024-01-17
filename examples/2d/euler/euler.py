@@ -9,6 +9,7 @@ from nonlinear_mor.utils.parameters import CubicParameterSpace
 
 def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.), (0., 1.)], t_final=0.6):
     def call_pyclaw(claw, domain, mu):
+        mu = mu[0]
         riemann_solver = riemann.euler_4wave_2D
         claw.solver = pyclaw.ClawSolver2D(riemann_solver)
         claw.solver.all_bcs = pyclaw.BC.extrap

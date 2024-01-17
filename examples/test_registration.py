@@ -21,8 +21,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                              callback=ast.literal_eval),
          num_training_parameters: int = Option(3, help='Number of training parameters'),
          sampling_mode: str = Option('uniform', help='Sampling mode for sampling the training parameters'),
-         reference_parameter: str = Option('0.625', help='Reference parameter, either a number or a list of numbers',
-                                           callback=ast.literal_eval),
+         reference_parameters: str = Option('[[0.5], [1.5]]', help='Reference parameter, either a number or a list of numbers',
+                                            callback=ast.literal_eval),
          oversampling_size: int = Option(10, help='Margin in pixels used for oversampling'),
          value_on_oversampling: float = Option(default=None, help='Value to set for the target snapshots '
                                                                   'on the oversampling domain'),
@@ -63,11 +63,15 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     gs_smoothing_params = {'alpha': alpha, 'exponent': exponent, 'gamma': gamma}
     registration_params = {'sigma': sigma, 'restriction': restriction, 'optimization_method': optimization_method}
 
-    u_ref = fom.solve(reference_parameter)
+    if not (isinstance(reference_parameters, list) and len(reference_parameters) > 1):
+        reference_parameters = [reference_parameters]
+    u_refs = [fom.solve(mu_ref) for mu_ref in reference_parameters]
+
     if value_on_oversampling is not None:
-        mask = np.ones(u_ref.full_shape, bool)
-        mask[restriction] = 0
-        u_ref[mask] = value_on_oversampling
+        for u_ref in u_refs:
+            mask = np.ones(u_ref.full_shape, bool)
+            mask[restriction] = 0
+            u_ref[mask] = value_on_oversampling
     geodesic_shooter = geodesic_shooting.GeodesicShooting(**gs_smoothing_params)
 
     # write summary
@@ -82,7 +86,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     summary += '------------------\n'
     summary += 'Registration parameters: ' + str(registration_params) + '\n'
     summary += '------------------\n'
-    summary += 'Reference parameter: ' + str(reference_parameter) + '\n'
+    summary += 'Reference parameters: ' + str(reference_parameters) + '\n'
     summary += 'Parameters (' + str(len(parameters)) + '): ' + str(parameters) + '\n'
     if write_results:
         with open(f'{filepath_prefix}/summary.txt', 'a') as f:
@@ -99,6 +103,10 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
         u = fom.solve(mu)
         snapshots.append(u)
         _, S = pod(snapshots, num_modes=1, product_operator=None, return_singular_values='all')
+
+        i = np.argmin(np.linalg.norm(np.array(reference_parameters) - mu, axis=-1))
+        u_ref = u_refs[i]
+        print(f"Reference parameter: {reference_parameters[i]}")
         result = geodesic_shooter.register(u_ref, u, **registration_params, return_all=True,
                                            initial_vector_field=initial_vector_field)
         if reuse_initial_vector_field:

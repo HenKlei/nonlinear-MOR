@@ -49,4 +49,4 @@ class CubicParameterSpace(ParameterSpace):
             parameters = np.stack([temp_.T for temp_ in temp], axis=-1).reshape(-1, self.dim)
             assert parameters.shape == (number_of_parameters_per_dimension**self.dim, self.dim)
 
-        return parameters.squeeze()
+        return parameters

@@ -11,6 +11,7 @@ from nonlinear_mor.utils.parameters import CubicParameterSpace
 
 def create_model(spatial_shape, num_time_steps, spatial_extent=[(-1., 1.)], t_final=0.4):
     def call_pyclaw(claw, domain, mu):
+        mu = mu[0]
         riemann_solver = riemann.euler_1D_py.euler_hllc_1D
         claw.solver = pyclaw.ClawSolver1D(riemann_solver)
         claw.solver.kernel_language = 'Python'

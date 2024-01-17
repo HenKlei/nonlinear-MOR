@@ -10,6 +10,7 @@ from nonlinear_mor.utils.parameters import CubicParameterSpace
 
 def create_model(spatial_shape, num_time_steps, spatial_extend=[(-1., 1.), (-1., 1.)], t_final=0.6):
     def call_pyclaw(claw, domain, mu):
+        mu = mu[0]
         claw.solver = pyclaw.ClawSolver2D(riemann.vc_acoustics_2D)
         claw.solver.dimensional_split = False
         claw.solver.limiters = pyclaw.limiters.tvd.MC

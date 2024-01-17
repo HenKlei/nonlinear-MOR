@@ -5,10 +5,10 @@ from nonlinear_mor.utils.parameters import CubicParameterSpace
 
 
 def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.)], temporal_extend=(0., 1.)):
-    def exact_solution(x, *, mu=1.):
-        s_l = 1.5 * mu
-        s_m = mu
-        s_r = 0.5 * mu
+    def exact_solution(x, *, mu=[1.]):
+        s_l = 1.5 * mu[0]
+        s_m = mu[0]
+        s_r = 0.5 * mu[0]
         t_intersection = 0.25 / (s_l - s_r)
         return ScalarFunction(data=(2. * (x[..., 1] <= t_intersection) * (0.25 + s_l * x[..., 1] - x[..., 0] >= 0.)
                                     + (2. * (x[..., 1] > t_intersection)

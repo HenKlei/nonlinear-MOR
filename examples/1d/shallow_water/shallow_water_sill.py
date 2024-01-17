@@ -31,7 +31,7 @@ def create_model(spatial_shape, num_time_steps, spatial_extent=[(-1., 1.)], t_fi
         state = pyclaw.State(domain, 2, 1)
 
         # Gravitational constant
-        state.problem_data['grav'] = mu
+        state.problem_data['grav'] = mu[0]
         state.problem_data['dry_tolerance'] = 1e-3
         state.problem_data['sea_level'] = 0.0
 
