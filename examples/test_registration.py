@@ -85,6 +85,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     summary += '------------------\n'
     summary += 'Registration parameters: ' + str(registration_params) + '\n'
     summary += '------------------\n'
+    summary += 'Reuse initial vector field: ' + str(reuse_initial_vector_field) + '\n'
     summary += 'Reference parameter: ' + str(reference_parameter) + '\n'
     summary += 'Parameters (' + str(len(parameters)) + '): ' + str(parameters) + '\n'
     if write_results:
