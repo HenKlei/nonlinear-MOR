@@ -55,6 +55,9 @@ def create_model(spatial_shape, num_time_steps):
         num_flux='simplified_engquist_osher',
         nt=num_time_steps
     )
+
     parameter_space = CubicParameterSpace(parameter_ranges)
-    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model,
+    default_reference_parameter = 1.25
+
+    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, model,
                              name='1dBurgersSmoothpyMORCentralMerging')

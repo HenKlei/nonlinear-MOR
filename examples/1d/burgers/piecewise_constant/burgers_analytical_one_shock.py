@@ -9,7 +9,8 @@ def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.)], tempo
         assert mu > 0.
         return ScalarFunction(data=(1. * (1./mu * (x[..., 0] - 0.25) - x[..., 1] <= 0.)))
 
-    parameter_space = CubicParameterSpace([(0.25, 1.5)])
+    parameter_space = CubicParameterSpace([(0.5, 1.5)])
+    default_reference_parameter = 1.
 
-    return AnalyticalModel(spatial_shape, num_time_steps, parameter_space, exact_solution,
+    return AnalyticalModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, exact_solution,
                            spatial_extend, temporal_extend, name='1dBurgersPiecewiseConstantAnalyticalOneShock')

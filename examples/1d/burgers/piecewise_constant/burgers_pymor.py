@@ -63,6 +63,9 @@ def create_model(spatial_shape, num_time_steps):
         num_flux='engquist_osher',
         nt=num_time_steps
     )
-    parameter_space = CubicParameterSpace([(0.25, 1.5)])
-    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model,
+
+    parameter_space = CubicParameterSpace([(0.5, 1.5)])
+    default_reference_parameter = 1.
+
+    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, model,
                              name='1dBurgersPiecewiseConstantpyMOR')

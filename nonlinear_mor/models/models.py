@@ -13,13 +13,15 @@ from nonlinear_mor.utils.logger import getLogger
 
 
 class Model:
-    def __init__(self, spatial_shape, num_time_steps, parameter_space, name=''):
+    def __init__(self, spatial_shape, num_time_steps, parameter_space, default_reference_parameter, name=''):
         assert isinstance(spatial_shape, tuple)
         assert isinstance(num_time_steps, int) and num_time_steps > 0
         self.spatial_shape = spatial_shape
         self.dim = len(self.spatial_shape)
         self.num_time_steps = num_time_steps
         self.parameter_space = parameter_space
+        self.default_reference_parameter = default_reference_parameter
+        assert self.default_reference_parameter in self.parameter_space
         self.name = name
 
         self.logger = getLogger(f'nonlinear_mor.{self.name}')
@@ -35,9 +37,10 @@ class Model:
 
 
 class AnalyticalModel(Model):
-    def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None, exact_solution=None,
+    def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None,
+                 default_reference_parameter=None, exact_solution=None,
                  spatial_extend=[(0., 1.), ], temporal_extend=(0., 1.), name='AnalyticalModel'):
-        super().__init__(spatial_shape, num_time_steps, parameter_space, name=name)
+        super().__init__(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, name=name)
         self.exact_solution = exact_solution
         self.spatial_extend = spatial_extend
         self.temporal_extend = temporal_extend
@@ -65,9 +68,9 @@ class AnalyticalModel(Model):
 
 
 class WrappedpyMORModel(Model):
-    def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None, model=None,
-                 name='WrappedpyMORModel'):
-        super().__init__(spatial_shape, num_time_steps, parameter_space, name=name)
+    def __init__(self, spatial_shape=(100, ), num_time_steps=100, parameter_space=None,
+                 default_reference_parameter=None, model=None, name='WrappedpyMORModel'):
+        super().__init__(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, name=name)
         self.model = model
 
     def create_summary(self):
@@ -100,8 +103,9 @@ if PYCLAW:
 
     class WrappedPyClawModel(Model):
         def __init__(self, spatial_shape=(100, 100), num_time_steps=100, parameter_space=None,
-                     spatial_extend=[(0., 1.), (0., 1.)], t_final=1., call_pyclaw=None, name='WrappedPyClawModel'):
-            super().__init__(spatial_shape, num_time_steps, parameter_space, name=name)
+                     default_reference_parameter=None, spatial_extend=[(0., 1.), (0., 1.)], t_final=1.,
+                     call_pyclaw=None, name='WrappedPyClawModel'):
+            super().__init__(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, name=name)
             self.call_pyclaw = call_pyclaw
             lower_bounds = [x[0] for x in spatial_extend]
             upper_bounds = [x[1] for x in spatial_extend]

@@ -9,7 +9,7 @@ import geodesic_shooting
 from geodesic_shooting.utils.reduced import pod
 
 from load_model import load_full_order_model
-from geodesic_shooting.utils.summary import plot_registration_results, save_plots_registration_results
+from geodesic_shooting.utils.summary import save_plots_registration_results
 from nonlinear_mor.utils.versioning import get_git_hash, get_version
 
 
@@ -21,7 +21,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                              callback=ast.literal_eval),
          num_training_parameters: int = Option(3, help='Number of training parameters'),
          sampling_mode: str = Option('uniform', help='Sampling mode for sampling the training parameters'),
-         reference_parameter: str = Option('0.625', help='Reference parameter, either a number or a list of numbers',
+         reference_parameter: str = Option('None', help='Reference parameter, either a number or a list of numbers',
                                            callback=ast.literal_eval),
          oversampling_size: int = Option(10, help='Margin in pixels used for oversampling'),
          value_on_oversampling: float = Option(default=None, help='Value to set for the target snapshots '
@@ -62,6 +62,9 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
 
     gs_smoothing_params = {'alpha': alpha, 'exponent': exponent, 'gamma': gamma}
     registration_params = {'sigma': sigma, 'restriction': restriction, 'optimization_method': optimization_method}
+
+    if reference_parameter is None:
+        reference_parameter = fom.default_reference_parameter
 
     u_ref = fom.solve(reference_parameter)
     if value_on_oversampling is not None:

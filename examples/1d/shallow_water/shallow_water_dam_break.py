@@ -55,6 +55,7 @@ def create_model(spatial_shape, num_time_steps, spatial_extent=[(-5., 5.)], t_fi
         return u
 
     parameter_space = CubicParameterSpace([(0.5, 1.5)])
+    default_reference_parameter = 1.
 
-    return WrappedPyClawModel(spatial_shape, num_time_steps, parameter_space, spatial_extent, t_final, call_pyclaw,
-                              name='1dShallowWaterDamBreakPyClaw')
+    return WrappedPyClawModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter,
+                              spatial_extent, t_final, call_pyclaw, name='1dShallowWaterDamBreakPyClaw')
