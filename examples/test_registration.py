@@ -150,10 +150,14 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             for val in singular_values:
                 singular_values_file.write(f"{val}\n")
 
-    filepath = filepath_prefix + '/singular_vectors'
-    pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
-    for i, mode in enumerate(all_reduced_vector_fields):
-        mode.save(f'{filepath}/mode_{i}.png', plot_args={'title': f'Mode {i}'})
+        filepath = filepath_prefix + '/singular_vectors'
+        pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
+        for i, mode in enumerate(all_reduced_vector_fields):
+            mode.save(f'{filepath}/mode_{i}.png', plot_args={'title': f'Mode {i}'})
+
+        import pickle
+        with open(f'{filepath}/full_vector_fields', 'wb') as output_file:
+            pickle.dump(full_vector_fields, output_file)
 
 
 if __name__ == "__main__":
