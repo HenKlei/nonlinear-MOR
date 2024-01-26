@@ -97,19 +97,22 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     full_vector_fields = []
     snapshots = []
 
+    full_vector_field_trajectories = []
+
     initial_vector_field = None
-    S = []
+    singular_values_snapshots = []
 
     for mu in parameters:
         print(f"mu: {mu}")
         u = fom.solve(mu)
         snapshots.append(u)
-        _, S = pod(snapshots, num_modes=1, product_operator=None, return_singular_values='all')
+        _, singular_values_snapshots = pod(snapshots, num_modes=1, product_operator=None, return_singular_values='all')
         result = geodesic_shooter.register(u_ref, u, **registration_params, return_all=True,
                                            initial_vector_field=initial_vector_field)
         if reuse_initial_vector_field:
             initial_vector_field = result['initial_vector_field']
         full_vector_fields.append(result['initial_vector_field'])
+        full_vector_field_trajectories.extend(result['vector_fields'])
 #        plot_registration_results(result, show_restriction_boundary=True)
         if write_results:
             save_plots_registration_results(result, filepath=f'{filepath_prefix}/mu_{str(mu).replace(".", "_")}/',
@@ -142,15 +145,26 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                                      return_singular_values='all')
     print("Singular values of the initial vector fields with respect to the parameter:")
     print(singular_values)
+
+    all_reduced_vector_fields_trajectories, singular_values_all_trajectories = pod(full_vector_field_trajectories,
+                                                                                   num_modes=num_training_parameters,
+                                                                                   product_operator=product_operator,
+                                                                                   return_singular_values='all')
+    print("Singular values of all vector field trajectories:")
+    print(singular_values_all_trajectories)
+
     if write_results:
         filepath = filepath_prefix + '/singular_values'
         pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
         with open(f'{filepath}/singular_values_snapshots.txt', 'a') as singular_values_file:
-            for s in S:
+            for s in singular_values_snapshots:
                 singular_values_file.write(f"{s}\n")
         with open(f'{filepath}/singular_values_initial_vector_fields.txt', 'a') as singular_values_file:
             for val in singular_values:
                 singular_values_file.write(f"{val}\n")
+        with open(f'{filepath}/singular_values_all_trajectories.txt', 'a') as singular_values_file:
+            for s in singular_values_all_trajectories:
+                singular_values_file.write(f"{s}\n")
 
         filepath = filepath_prefix + '/singular_vectors'
         pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
