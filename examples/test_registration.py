@@ -31,7 +31,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          exponent: int = Option(1, help='Registration parameter `exponent`'),
          gamma: float = Option(1.0, help='Registration parameter `gamma`'),
          sigma: float = Option(0.01, help='Registration parameter `sigma`'),
-         l2_prod: bool = Option(False, help='Use L2 product for POD'),
+         l2_prod: bool = Option(True, help='Determines whether or not to use the L2-product as inner product for '
+                                           'orthonormalizing the vector fields and performing POD'),
          reuse_initial_vector_field: bool = Option(True, help='Reuse the previous initial vector field as guess for '
                                                               'the next registration'),
          write_results: bool = Option(True, help='Determines whether or not to write results to disc (useful during '
@@ -86,6 +87,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     summary += 'Registration parameters: ' + str(registration_params) + '\n'
     summary += '------------------\n'
     summary += 'Reuse initial vector field: ' + str(reuse_initial_vector_field) + '\n'
+    summary += 'L2 product: ' + str(l2_prod) + '\n'
     summary += 'Reference parameter: ' + str(reference_parameter) + '\n'
     summary += 'Parameters (' + str(len(parameters)) + '): ' + str(parameters) + '\n'
     if write_results:

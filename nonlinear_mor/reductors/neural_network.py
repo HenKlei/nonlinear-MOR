@@ -139,7 +139,7 @@ class NonlinearNeuralNetworkReductor:
                                               interval=interval))
         return full_vector_fields
 
-    def reduce(self, basis_sizes=range(1, 11), l2_prod=False, return_all=True, restarts=10,
+    def reduce(self, basis_sizes=range(1, 11), l2_prod=True, return_all=True, restarts=10,
                save_intermediate_results=True, registration_params={}, trainer_params={}, hidden_layers=[20, 20, 20],
                training_params={}, num_workers=1, full_solutions_file=None, full_vector_fields_file=None,
                reuse_vector_fields=True, filepath_prefix='', interval=10):
