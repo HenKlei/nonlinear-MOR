@@ -25,7 +25,8 @@ def burgers_problem(parameter_ranges, circle=False):
         The interval in which μ is allowed to vary.
     """
 
-    initial_data = ExpressionFunction('1.2*exp(-(x[0]+0.5)**2/0.025)-mu2[0]*exp(-(x[0]-0.5)**2/0.025)', 1, parameters={'mu2': 1})
+    initial_data = ExpressionFunction('1.2*exp(-(x[0]+0.5)**2/0.025)-mu2[0]*exp(-(x[0]-0.5)**2/0.025)', 1,
+                                      parameters={'mu2': 1})
     dirichlet_data = ConstantFunction(dim_domain=1, value=0.)
 
     return InstationaryProblem(
@@ -55,5 +56,9 @@ def create_model(spatial_shape, num_time_steps):
         num_flux='simplified_engquist_osher',
         nt=num_time_steps
     )
+
     parameter_space = CubicParameterSpace(parameter_ranges)
-    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model)
+    default_reference_parameter = [1.75, 0.75]
+
+    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, model,
+                             name='1dBurgersSmoothpyMORTwoParametersCentralMerging')
