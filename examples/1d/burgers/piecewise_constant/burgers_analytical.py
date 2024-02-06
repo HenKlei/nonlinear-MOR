@@ -16,7 +16,8 @@ def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.)], tempo
                                     + (1. * (0.25 + s_l * x[..., 1] - x[..., 0] < 0.)
                                        * (0.5 + s_r * x[..., 1] - x[..., 0] > 0.))))
 
-    parameter_space = CubicParameterSpace([(0.25, 1.5)])
+    parameter_space = CubicParameterSpace([(0.5, 1.5)])
+    default_reference_parameter = 0.5
 
-    return AnalyticalModel(spatial_shape, num_time_steps, parameter_space, exact_solution,
-                           spatial_extend, temporal_extend)
+    return AnalyticalModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, exact_solution,
+                           spatial_extend, temporal_extend, name='1dBurgersPiecewiseConstantAnalytical')

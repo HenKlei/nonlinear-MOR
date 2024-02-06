@@ -49,7 +49,7 @@ def burgers_problem(parameter_ranges, circle=False):
 
 def create_model(spatial_shape, num_time_steps):
     assert len(spatial_shape) == 1
-    parameter_ranges = [(0.25, 1.5), (1, 3)]
+    parameter_ranges = [(0.5, 1.5), (1, 3)]
     problem = burgers_problem(parameter_ranges)
     model, _ = discretize_instationary_fv(
         problem,
@@ -57,5 +57,9 @@ def create_model(spatial_shape, num_time_steps):
         num_flux='engquist_osher',
         nt=num_time_steps
     )
+
     parameter_space = CubicParameterSpace(parameter_ranges)
-    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model)
+    default_reference_parameter = [1., 2.]
+
+    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, model,
+                             name='1dBurgersSmoothpyMORTwoParameters')
