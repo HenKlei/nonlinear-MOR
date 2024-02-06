@@ -25,12 +25,14 @@ def burgers_problem(parameter_ranges, circle=False):
         The interval in which μ is allowed to vary.
     """
 
-    initial_data = ExpressionFunction('1.2*exp(-(x[0]+0.5)**2/0.025)-exp(-(x[0]-0.5)**2/0.025)', 1)
-    dirichlet_data = ConstantFunction(dim_domain=1, value=0.)
+    initial_data = ExpressionFunction('(2. + 0.1*sin(4*pi*x[0]*3)) * (x[0] <= .25)'
+                                      '+ (1. + 0.1*sin(8*pi*x[0]*3)) * (.25 < x[0]) * (x[0] <= .5)'
+                                      '+ (0.1*sin(2*pi*x[0]*3)) * (x[0] > .5)', 1)
+    dirichlet_data = ConstantFunction(dim_domain=1, value=2.)
 
     return InstationaryProblem(
         StationaryProblem(
-            domain=CircleDomain([-1, 1]) if circle else LineDomain([-1, 1], right=None),
+            domain=CircleDomain([0, 1]) if circle else LineDomain([0, 1], right=None),
             dirichlet_data=dirichlet_data,
             rhs=None,
             nonlinear_advection=ExpressionFunction('mu1[0] * x**2 / 2.',
@@ -47,13 +49,17 @@ def burgers_problem(parameter_ranges, circle=False):
 
 def create_model(spatial_shape, num_time_steps):
     assert len(spatial_shape) == 1
-    parameter_ranges = [(0.75, 1.75)]
+    parameter_ranges = [(.2, 1.5)]
     problem = burgers_problem(parameter_ranges)
     model, _ = discretize_instationary_fv(
         problem,
-        diameter=2 / spatial_shape[0],
-        num_flux='simplified_engquist_osher',
+        diameter=1 / spatial_shape[0],
+        num_flux='engquist_osher',
         nt=num_time_steps
     )
+
     parameter_space = CubicParameterSpace(parameter_ranges)
-    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model)
+    default_reference_parameter = 1.
+
+    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, model,
+                             name='1dBurgersSmoothpyMOR')

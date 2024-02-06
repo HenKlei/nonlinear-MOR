@@ -31,9 +31,16 @@ def get_version(package):
     logger = getLogger('nonlinear_mor.versioning.get_version')
 
     try:
-        version = package.__version__
+        import os
+        import subprocess
+        version = str(subprocess.check_output(('git', '-C', os.path.dirname(package.__file__),
+                                               'log', '-1', '--format=%H %cd')))
         logger.info(f"Extracted version of package '{package.__name__}'.")
-    except AttributeError:
-        version = f"No version for package '{package.__name__}' found."
-        logger.warning(f"Could not extract version of package '{package.__name__}'.")
+    except subprocess.CalledProcessError:
+        try:
+            version = package.__version__
+            logger.info(f"Extracted version of package '{package.__name__}'.")
+        except AttributeError:
+            version = f"No version for package '{package.__name__}' found."
+            logger.warning(f"Could not extract version of package '{package.__name__}'.")
     return version

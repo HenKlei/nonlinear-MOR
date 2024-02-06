@@ -1,6 +1,6 @@
 import numpy as np
 
-from .burgers_1d_analytical import create_model  # noqa: F401
+from .burgers_analytical import create_model  # noqa: F401
 
 
 def get_landmarks(mu=0.25, all_landmarks=True):

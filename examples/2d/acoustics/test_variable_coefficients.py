@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 
-from euler import create_model
+from variable_coefficients import create_model
 
-model = create_model((100, 100), 200)
+model = create_model((100, 100), 20)
 u = model.solve(1.4)
 ani = model.visualize(u)
 plt.show()
