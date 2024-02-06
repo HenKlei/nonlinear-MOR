@@ -39,4 +39,5 @@ def create_model(spatial_shape, num_time_steps, spatial_extend=[(0., 1.), (0., 1
 
     parameter_space = CubicParameterSpace([(1.2, 3)])
 
-    return WrappedPyClawModel(spatial_shape, num_time_steps, parameter_space, spatial_extend, t_final, call_pyclaw)
+    return WrappedPyClawModel(spatial_shape, num_time_steps, parameter_space, spatial_extend, t_final, call_pyclaw,
+                              name='2dEulerpyMOR')

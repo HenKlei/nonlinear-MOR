@@ -32,8 +32,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          num_workers: int = Option(1, help='Number of cores to use during registration; if greater than 1, the former '
                                            'vector field is not reused, otherwise the former vector field is used as '
                                            'initialization for the registration'),
-         l2_prod: bool = Option(False, help='Determines whether or not to use the L2-product as inner product for '
-                                            'orthonormalizing the vector fields'),
+         l2_prod: bool = Option(True, help='Determines whether or not to use the L2-product as inner product for '
+                                           'orthonormalizing the vector fields'),
          neural_network_training_restarts: int = Option(25, help='Maximum number of training restarts'),
          hidden_layers: List[int] = Option([20, 20, 20], help='Number of neurons in each hidden layer'),
          interval: int = Option(1, help='Interval in which to sample the vector fields for plotting.'),
