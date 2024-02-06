@@ -10,6 +10,7 @@ from geodesic_shooting.utils.reduced import pod
 
 from load_model import load_full_order_model
 from geodesic_shooting.utils.summary import save_plots_registration_results
+from geodesic_shooting.core import VectorField
 from nonlinear_mor.utils.versioning import get_git_hash, get_version
 
 
@@ -174,6 +175,35 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
         import pickle
         with open(f'{filepath}/full_vector_fields', 'wb') as output_file:
             pickle.dump(full_vector_fields, output_file)
+
+    for basis_size in range(1, len(all_reduced_vector_fields)):
+        reduced_vector_fields = all_reduced_vector_fields[:basis_size]
+        snapshot_matrix = np.stack([a.flatten() for a in reduced_vector_fields])
+        if l2_prod:
+            prod_reduced_vector_fields = np.stack([a.flatten() for a in full_vector_fields])
+        else:
+            prod_reduced_vector_fields = np.stack([product_operator(a).flatten() for a in full_vector_fields])
+        reduced_coefficients = snapshot_matrix.dot(prod_reduced_vector_fields.T).T
+        projected_vector_fields = (snapshot_matrix.T.dot(reduced_coefficients.T)).T  # shape: (len(training_set), dim)
+        for (mu, vf, u) in zip(parameters, projected_vector_fields, snapshots):
+            time_dep_vf = geodesic_shooter.integrate_forward_vector_field(VectorField(data=vf.reshape(full_vector_fields[0].full_shape)))
+            flow = time_dep_vf.integrate(sampler_options=geodesic_shooter.sampler_options)
+            transformed_input = u_ref.push_forward(flow)
+            absolute_error = (u - transformed_input).norm
+            relative_error = absolute_error / u.norm
+            restriction = registration_params.get('restriction')
+            if restriction:
+                absolute_error_restricted = (u - transformed_input).get_norm(restriction=restriction)
+                relative_error_restricted = absolute_error_restricted / u.get_norm(restriction=restriction)
+            else:
+                absolute_error_restricted = absolute_error
+                relative_error_restricted = relative_error
+            print(f"Relative error with projected initial vector field for parameter mu={mu}: "
+                  f"{relative_error_restricted}")
+            if write_results:
+                with open(f'{filepath_prefix}/test_errors.txt', 'a') as f:
+                    f.write(f"{mu}{absolute_error_restricted}\t{relative_error_restricted}\t"
+                            f"{absolute_error}\t{relative_error}\n")
 
 
 if __name__ == "__main__":
