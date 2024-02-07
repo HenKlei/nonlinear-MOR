@@ -185,6 +185,11 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             prod_reduced_vector_fields = np.stack([product_operator(a).flatten() for a in full_vector_fields])
         reduced_coefficients = snapshot_matrix.dot(prod_reduced_vector_fields.T).T
         projected_vector_fields = (snapshot_matrix.T.dot(reduced_coefficients.T)).T  # shape: (len(training_set), dim)
+
+        if write_results:
+            with open(f'{filepath_prefix}/test_errors.txt', 'a') as f:
+                f.write(f"\n\nReduced basis size: {basis_size}\n")
+
         for (mu, vf, u) in zip(parameters, projected_vector_fields, snapshots):
             time_dep_vf = geodesic_shooter.integrate_forward_vector_field(VectorField(data=vf.reshape(full_vector_fields[0].full_shape)))
             flow = time_dep_vf.integrate(sampler_options=geodesic_shooter.sampler_options)
