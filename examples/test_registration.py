@@ -190,6 +190,11 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             with open(f'{filepath_prefix}/test_errors.txt', 'a') as f:
                 f.write(f"\n\nReduced basis size: {basis_size}\n")
 
+        sum_absolute_error_restricted = 0.
+        sum_relative_error_restricted = 0.
+        sum_absolute_error = 0.
+        sum_relative_error = 0.
+
         for (mu, vf, u) in zip(parameters, projected_vector_fields, snapshots):
             time_dep_vf = geodesic_shooter.integrate_forward_vector_field(VectorField(data=vf.reshape(full_vector_fields[0].full_shape)))
             flow = time_dep_vf.integrate(sampler_options=geodesic_shooter.sampler_options)
@@ -203,12 +208,23 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             else:
                 absolute_error_restricted = absolute_error
                 relative_error_restricted = relative_error
+            sum_absolute_error_restricted += absolute_error_restricted
+            sum_relative_error_restricted += relative_error_restricted
+            sum_absolute_error += absolute_error
+            sum_relative_error += relative_error
             print(f"Relative error with projected initial vector field for parameter mu={mu}: "
                   f"{relative_error_restricted}")
             if write_results:
                 with open(f'{filepath_prefix}/test_errors.txt', 'a') as f:
-                    f.write(f"{mu}{absolute_error_restricted}\t{relative_error_restricted}\t"
+                    f.write(f"{mu}\t{absolute_error_restricted}\t{relative_error_restricted}\t"
                             f"{absolute_error}\t{relative_error}\n")
+
+        if write_results:
+            num_params = len(parameters)
+            with open(f'{filepath_prefix}/average_test_errors.txt', 'a') as f:
+                f.write(f"{basis_size}\t{sum_absolute_error_restricted / num_params}\t"
+                        f"{sum_relative_error_restricted / num_params}\t"
+                        f"{sum_absolute_error / num_params}\t{sum_relative_error / num_params}\n")
 
 
 if __name__ == "__main__":
