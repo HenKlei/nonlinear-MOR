@@ -157,7 +157,7 @@ if PYCLAW:
                 if u.ndim == 2:
                     vals.set_ydata(u[frame])
                 elif u.ndim == 3:
-                    vals.set_data(u[frame])
+                    vals.set_data(u[frame].transpose())
 
                 axis.set_title(f"Frame {frame}")
                 return [vals]
