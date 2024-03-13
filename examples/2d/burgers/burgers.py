@@ -20,4 +20,6 @@ def create_model(spatial_shape, num_time_steps):
         nt=num_time_steps
     )
     parameter_space = CubicParameterSpace([(0, 10)])
-    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, model, name='2dBurgerspyMOR')
+    default_reference_parameter = 1
+    return WrappedpyMORModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter, model,
+                             name='2dBurgerspyMOR')
