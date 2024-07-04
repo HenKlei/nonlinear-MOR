@@ -39,19 +39,18 @@ from nonlinear_mor.utils.parameters import CubicParameterSpace
 
 gamma = 1.4  # Ratio of specific heats
 
-x0 = 0.5
 y0 = 0.
 r0 = 0.2
 
 
-def ycirc(x, ymin, ymax):
+def ycirc(x, ymin, ymax, x0):
     if ((x-x0)**2) < (r0**2):
         return max(min(y0 + np.sqrt(r0**2-(x-x0)**2), ymax) - ymin, 0.)
     else:
         return 0
 
 
-def qinit(state, rhoin=0.1, pinf=5.):
+def qinit(state, rhoin=0.1, pinf=5., x0=0.5):
     from scipy import integrate
 
     gamma1 = gamma - 1.
@@ -89,7 +88,7 @@ def qinit(state, rhoin=0.1, pinf=5.):
             ydown = Y[i, j]-dy2
             yup = Y[i, j]+dy2
             if abs(r[i, j]-r0) < d2:
-                infrac, abserr = integrate.quad(ycirc, X[i, j]-dx2, X[i, j]+dx2, args=(ydown, yup),
+                infrac, abserr = integrate.quad(ycirc, X[i, j]-dx2, X[i, j]+dx2, args=(ydown, yup, x0),
                                                 epsabs=1.e-8, epsrel=1.e-5)
                 infrac = infrac/(dx*dy)
                 state.q[0, i, j] = rhoin*infrac + rhoout*(1.-infrac)
@@ -160,31 +159,6 @@ def step_Euler_radial(solver, state, dt):
     q[3, :, :] = q[3, :, :] - dt/rad * v * (qstar[3, :, :] + press)
 
 
-def dq_Euler_radial(solver, state, dt):
-    """
-    Geometric source terms for Euler equations with radial symmetry.
-    This is a SharpClaw-style source term routine, which returns
-    the value of the source terms.
-    """
-    q = state.q
-    rad = state.aux[0, :, :]
-
-    rho = q[0, :, :]
-    u = q[1, :, :]/rho
-    v = q[2, :, :]/rho
-    press = (gamma - 1.) * (q[3, :, :] - 0.5*rho*(u**2 + v**2))
-
-    dq = np.empty(q.shape)
-
-    dq[0, :, :] = -dt/rad * q[2, :, :]
-    dq[1, :, :] = -dt/rad * rho*u*v
-    dq[2, :, :] = -dt/rad * rho*v*v
-    dq[3, :, :] = -dt/rad * v * (q[3, :, :] + press)
-    dq[4, :, :] = 0
-
-    return dq
-
-
 def create_model(spatial_shape=(160, 40), num_time_steps=20, spatial_extend=[(0, 2), (0, 0.5)], t_final=0.6):
     def call_pyclaw(claw, domain, mu):
         solver = pyclaw.ClawSolver2D(riemann.euler_5wave_2D)
@@ -200,9 +174,9 @@ def create_model(spatial_shape=(160, 40), num_time_steps=20, spatial_extend=[(0,
 
         num_aux = 1
         state = pyclaw.State(domain, num_eqn, num_aux)
-        state.problem_data['gamma'] = mu
+        state.problem_data['gamma'] = gamma
 
-        qinit(state)
+        qinit(state, x0=mu)
         auxinit(state)
 
         solver.user_bc_lower = incoming_shock
@@ -229,8 +203,8 @@ def create_model(spatial_shape=(160, 40), num_time_steps=20, spatial_extend=[(0,
         u = np.array([s.q[0] for s in claw.frames])
         return u
 
-    parameter_space = CubicParameterSpace([(1.2, 1.6)])
-    default_reference_parameter = 1.4
+    parameter_space = CubicParameterSpace([(0.5, 1.)])
+    default_reference_parameter = 0.75
 
     return WrappedPyClawModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter,
                               spatial_extend, t_final, call_pyclaw, name='2dEulerShockbubbleInteractionPyClaw')
