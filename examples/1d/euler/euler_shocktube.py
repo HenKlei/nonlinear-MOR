@@ -25,8 +25,10 @@ def create_model(spatial_shape, num_time_steps, spatial_extent=[(-1., 1.)], t_fi
         domain = pyclaw.Domain([x])
         state = pyclaw.State(domain, num_eqn)
 
-        state.problem_data['gamma'] = mu
-        state.problem_data['gamma1'] = mu - 1.
+        gamma = 1.4
+
+        state.problem_data['gamma'] = gamma
+        state.problem_data['gamma1'] = gamma - 1.
 
         x = state.grid.x.centers
 
@@ -52,7 +54,7 @@ def create_model(spatial_shape, num_time_steps, spatial_extent=[(-1., 1.)], t_fi
         u = np.array([s.q[0] for s in claw.frames])
         return u
 
-    parameter_space = CubicParameterSpace([(1.2, 3)])
+    parameter_space = CubicParameterSpace([(1.2, 2.)])
     default_reference_parameter = 2.
 
     return WrappedPyClawModel(spatial_shape, num_time_steps, parameter_space, default_reference_parameter,
