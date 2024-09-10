@@ -8,18 +8,19 @@ from geodesic_shooting.utils.visualization import (animate_landmark_trajectories
                                                    plot_landmark_matchings,
                                                    plot_landmark_trajectories, animate_warpgrids)
 from geodesic_shooting.core import ScalarFunction
+from geodesic_shooting.utils.kernels import GaussianKernel
 
 
 if __name__ == "__main__":
     from load_model import load_landmark_function
     get_landmarks = load_landmark_function("1d.burgers.piecewise_constant.burgers_landmarks_analytical")
     mu_in = 0.5
-    mu_tar = 0.75
+    mu_tar = 0.625
     input_landmarks = get_landmarks(mu=mu_in)
     target_landmarks = get_landmarks(mu=mu_tar)
 
     # perform the registration using landmark shooting algorithm
-    gs = geodesic_shooting.LandmarkShooting(kwargs_kernel={'sigma': 4})
+    gs = geodesic_shooting.LandmarkShooting(kwargs_kernel={"sigma": 4.})#GaussianKernel(sigma=4))
     result = gs.register(input_landmarks, target_landmarks, sigma=0.1, return_all=True, landmarks_labeled=True)
     final_momenta = result['initial_momenta']
     registered_landmarks = result['registered_landmarks']
