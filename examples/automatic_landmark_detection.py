@@ -31,7 +31,6 @@ class Line:
 
     def point_close_to_line(self, point, threshold=1e-1):
         proj = self.nearest_point_on_line(point)
-        print(f"Point: {point}, projection: {proj}")
         if np.linalg.norm(point - proj) > threshold:
             return False
         return True
@@ -48,13 +47,13 @@ def place_landmarks_on_edges(input_img, num_landmarks,
                                  "rho": 1,  # distance resolution in pixels of the Hough grid
                                  "theta": np.pi / 180,  # angular resolution in radians of the Hough grid
                                  "threshold": 30,  # minimum number of votes (intersections in Hough grid cell)
-                                 "min_line_length": 10,  # minimum number of pixels making up a line
-                                 "max_line_gap": 20},  # maximum gap in pixels between connectable line segments
+                                 "minLineLength": 10,  # minimum number of pixels making up a line
+                                 "maxLineGap": 20},  # maximum gap in pixels between connectable line segments
                              remove_parallel_lines=True, remove_parallel_lines_threshold=1
                              ):
     img = input_img.copy()
-    min_val = min(img)
-    max_val = max(img)
+    min_val = np.min(img)
+    max_val = np.max(img)
     img = (img - min_val) / (max_val - min_val) * 255.
     img = np.asarray(img, dtype=np.uint8)
 
@@ -68,7 +67,7 @@ def place_landmarks_on_edges(input_img, num_landmarks,
     lines = cv2.HoughLinesP(edges, **hough_parameters)
 
     img = np.asarray(img, dtype=float)
-    print(f"Number of lines: {len(lines)}")
+    # print(f"Number of lines: {len(lines)}")
 
     line_objects = []
     for line in lines:
@@ -107,7 +106,7 @@ def place_landmarks_on_edges(input_img, num_landmarks,
     total_line_length = 0.
     for line_object in line_objects:
         total_line_length += line_object.length()
-    print(f"Total line length: {total_line_length}")
+    # print(f"Total line length: {total_line_length}")
 
     landmarks = []
     for line_object in line_objects:

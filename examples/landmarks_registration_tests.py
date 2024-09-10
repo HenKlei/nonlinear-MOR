@@ -71,9 +71,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
         reference_landmarks = get_landmarks(mu=reference_parameter)
     else:
         assert landmarks_labeled is False
-        assert u_ref.dim == 1
+        assert u_ref.dim == 2
         reference_landmarks = place_landmarks_on_edges(u_ref.to_numpy(), num_landmarks)
-        raise NotImplementedError
 
     parameters = fom.parameter_space.sample(num_training_parameters, sampling_mode)
 
@@ -129,7 +128,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             get_landmarks = load_landmark_function(example)
             target_landmarks = get_landmarks(mu=mu)
         else:
-            target_landmarks = None
+            target_landmarks = place_landmarks_on_edges(u_ref.to_numpy(), num_landmarks)
         initial_momenta = None
         result = gs.register(reference_landmarks, target_landmarks, initial_momenta=initial_momenta, sigma=sigma,
                              return_all=True, landmarks_labeled=landmarks_labeled)
@@ -193,8 +192,6 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                       flow.to_numpy()[..., 1].flatten() / flow.full_shape[1],
                                       flow.to_numpy()[..., 0].flatten() / flow.full_shape[0]):
                     f.write(f'{x}\t{y}\t{u}\t{v}\n')
-
-        # TODO: Make sure to enable oversampling for error computation!!!
 
 
 if __name__ == "__main__":
