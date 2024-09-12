@@ -185,6 +185,12 @@ class NonlinearNeuralNetworkReductor:
                                                              product_operator=product_operator,
                                                              return_singular_values='all')
 
+            if save_intermediate_results:
+                filepath = filepath_prefix + '/singular_vectors'
+                pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
+                for i, mode in enumerate(all_reduced_vector_fields):
+                    mode.save_tikz(f'{filepath}/mode_{i}.tex', title=f'Mode {i}', interval=interval)
+
         if not l2_prod:
             norms = []
             for i, v in enumerate(all_reduced_vector_fields):

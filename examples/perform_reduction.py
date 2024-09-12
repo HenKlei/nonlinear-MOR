@@ -70,6 +70,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     elif fom.dim == 3:
         restriction = np.s_[oversampling_size:-oversampling_size, oversampling_size:-oversampling_size,
                             oversampling_size:-oversampling_size, oversampling_size:-oversampling_size]
+    else:
+        raise NotImplementedError
     if oversampling_size == 0:
         restriction = np.s_[...]
 
