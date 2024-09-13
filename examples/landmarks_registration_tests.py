@@ -7,7 +7,6 @@ from typing import List
 import numpy as np
 
 import geodesic_shooting
-from geodesic_shooting.utils.kernels import GaussianKernel
 
 from nonlinear_mor.utils.versioning import get_git_hash, get_version
 from load_model import load_full_order_model, load_landmark_function
@@ -22,6 +21,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                                                   'problem'),
          num_landmarks: int = Option(20, help='Number of landmarks to use when placing them automatically'),
          landmarks_labeled: bool = Option(True, help='Determines whether the landmarks are labeled'),
+         many_landmarks: bool = Option(False, help='Determines whether to use many landmarks provided by the FOM'),
          num_time_steps: int = Option(100, help='Number of time steps in the high-fidelity solutions'),
          additional_parameters: str = Option('{}', help='Additional parameters to pass to the full-order model',
                                              callback=ast.literal_eval),
@@ -36,7 +36,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                                  'development)')):
 
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    filepath_prefix = f'results_labeled_landmarks_registration_test_{timestr}'
+    filepath_prefix = f'results_landmarks_registration_test_{timestr}'
     if write_results:
         pathlib.Path(filepath_prefix).mkdir(parents=True, exist_ok=True)
 
@@ -68,15 +68,16 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
 
     if not place_landmarks_automatically:
         get_landmarks = load_landmark_function(example)
-        reference_landmarks = get_landmarks(mu=reference_parameter)
+        reference_landmarks = get_landmarks(mu=reference_parameter, many_landmarks=many_landmarks)
     else:
         assert landmarks_labeled is False
         assert u_ref.dim == 2
         reference_landmarks = place_landmarks_on_edges(u_ref.to_numpy(), num_landmarks)
 
+    num_landmarks = len(reference_landmarks)
+
     parameters = fom.parameter_space.sample(num_training_parameters, sampling_mode)
 
-    #gs = geodesic_shooting.LandmarkShooting(kernel=kernel)
     gs = geodesic_shooting.LandmarkShooting(kwargs_kernel={"sigma": kernel_sigma})
     mins = np.zeros(u_ref.dim)
     maxs = np.ones(u_ref.dim)
@@ -115,6 +116,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             summary_file.write('Place landmarks automatically: ' + str(place_landmarks_automatically) + '\n')
             summary_file.write('Number of landmarks: ' + str(num_landmarks) + '\n')
             summary_file.write('Landmarks labeled: ' + str(landmarks_labeled) + '\n')
+            summary_file.write('Many landmarks: ' + str(many_landmarks) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Number of training parameters: ' + str(num_training_parameters) + '\n')
             summary_file.write('Sampling mode for training parameters: ' + str(sampling_mode) + '\n')
