@@ -19,7 +19,8 @@ if __name__ == "__main__":
 
     # perform the registration using landmark shooting algorithm
     gs = geodesic_shooting.LandmarkShooting(kwargs_kernel={"sigma": 4.})
-    result = gs.register(input_landmarks, target_landmarks, sigma=0.1, return_all=True, landmarks_labeled=False)
+    result = gs.register(input_landmarks, target_landmarks, sigma=0.1, return_all=True, landmarks_labeled=True,
+                         kwargs_kernel_dist={"sigma": 4.})
     initial_momenta = result['initial_momenta']
     registered_landmarks = result['registered_landmarks']
 

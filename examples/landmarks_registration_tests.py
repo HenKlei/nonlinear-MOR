@@ -7,6 +7,7 @@ from typing import List
 import numpy as np
 
 import geodesic_shooting
+from geodesic_shooting.utils.reduced import pod
 
 from nonlinear_mor.utils.versioning import get_git_hash, get_version
 from load_model import load_full_order_model, load_landmark_function
@@ -32,6 +33,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                            callback=ast.literal_eval),
          sigma: float = Option(0.1, help='Registration parameter `sigma`'),
          kernel_sigma: float = Option(4., help='Kernel shape parameter `sigma`'),
+         kernel_dist_sigma: float = Option(4., help='Kernel shape parameter `sigma` for unlabeled case'),
          write_results: bool = Option(True, help='Determines whether or not to write results to disc (useful during '
                                                  'development)')):
 
@@ -125,6 +127,9 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             for reference_landmark in reference_landmarks:
                 summary_file.write(str(reference_landmark) + '\n')
 
+    list_initial_momenta = []
+    snapshots = []
+
     for mu in parameters:
         if not place_landmarks_automatically:
             get_landmarks = load_landmark_function(example)
@@ -133,9 +138,11 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             target_landmarks = place_landmarks_on_edges(u_ref.to_numpy(), num_landmarks)
         initial_momenta = None
         result = gs.register(reference_landmarks, target_landmarks, initial_momenta=initial_momenta, sigma=sigma,
-                             return_all=True, landmarks_labeled=landmarks_labeled)
+                             return_all=True, landmarks_labeled=landmarks_labeled,
+                             kwargs_kernel_dist={"sigma": kernel_dist_sigma})
         registered_landmarks = result['registered_landmarks']
         initial_momenta = result['initial_momenta']
+        list_initial_momenta.append(initial_momenta)
 
         filepath = f'{filepath_prefix}/mu_{str(mu).replace(".", "_")}/'
         pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
@@ -147,6 +154,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                                             mins=mins, maxs=maxs, spatial_shape=u_ref.full_shape)
 
         u_mu = fom.solve(mu)
+        snapshots.append(u_mu)
         u_red = u_ref.push_forward(flow)
 
         if write_results:
@@ -194,6 +202,65 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                       flow.to_numpy()[..., 1].flatten() / flow.full_shape[1],
                                       flow.to_numpy()[..., 0].flatten() / flow.full_shape[0]):
                     f.write(f'{x}\t{y}\t{u}\t{v}\n')
+
+
+    singular_vectors, singular_values = pod(list_initial_momenta, num_modes=len(parameters),
+                                            return_singular_values='all')
+
+    if write_results:
+        with open(filepath_prefix + 'singular_values_initial_momenta.txt', 'w') as f:
+            for s in singular_values:
+                f.write(f'{s}\n')
+
+    for basis_size in range(1, len(singular_vectors)):
+        reduced_initial_momenta = singular_vectors[:basis_size]
+        snapshot_matrix = np.stack([a.flatten() for a in reduced_initial_momenta])
+        prod_reduced_initial_momenta = np.stack([a.flatten() for a in list_initial_momenta])
+        reduced_coefficients = snapshot_matrix.dot(prod_reduced_initial_momenta.T).T
+        projected_initial_momenta = (snapshot_matrix.T.dot(reduced_coefficients.T)).T  # shape: (len(training_set), dim)
+
+        if write_results:
+            with open(f'{filepath_prefix}/test_errors.txt', 'a') as f:
+                f.write(f"\n\nReduced basis size: {basis_size}\n")
+
+        sum_absolute_error_restricted = 0.
+        sum_relative_error_restricted = 0.
+        sum_absolute_error = 0.
+        sum_relative_error = 0.
+
+        for (mu, initial_momenta, u) in zip(parameters, projected_initial_momenta, snapshots):
+            flow = gs.compute_time_evolution_of_diffeomorphisms(initial_momenta.reshape(reference_landmarks.shape),
+                                                                reference_landmarks,
+                                                                mins=mins, maxs=maxs, spatial_shape=u_ref.full_shape)
+            transformed_input = u_ref.push_forward(flow)
+            absolute_error = (u - transformed_input).norm
+            relative_error = absolute_error / u.norm
+            if restriction:
+                absolute_error_restricted = (u - transformed_input).get_norm(restriction=restriction)
+                relative_error_restricted = absolute_error_restricted / u.get_norm(restriction=restriction)
+            else:
+                absolute_error_restricted = absolute_error
+                relative_error_restricted = relative_error
+            sum_absolute_error_restricted += absolute_error_restricted
+            sum_relative_error_restricted += relative_error_restricted
+            sum_absolute_error += absolute_error
+            sum_relative_error += relative_error
+            print(f"Relative error with projected initial momenta for parameter mu={mu}: "
+                  f"{relative_error_restricted}")
+            if write_results:
+                with open(f'{filepath_prefix}/test_errors.txt', 'a') as f:
+                    f.write(f"{mu}\t{absolute_error_restricted}\t{relative_error_restricted}\t"
+                            f"{absolute_error}\t{relative_error}\n")
+
+        if write_results:
+            num_params = len(parameters)
+            with open(f'{filepath_prefix}/average_test_errors.txt', 'a') as f:
+                f.write(f"{basis_size}\t{sum_absolute_error_restricted / num_params}\t"
+                        f"{sum_relative_error_restricted / num_params}\t"
+                        f"{sum_absolute_error / num_params}\t{sum_relative_error / num_params}\n")
+
+
+# Learn map from parameter to reduced coefficients or directly to (unreduced) initial momenta!!!
 
 
 if __name__ == "__main__":
