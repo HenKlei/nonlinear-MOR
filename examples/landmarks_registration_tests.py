@@ -27,6 +27,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          additional_parameters: str = Option('{}', help='Additional parameters to pass to the full-order model',
                                              callback=ast.literal_eval),
          num_training_parameters: int = Option(50, help='Number of test parameters'),
+         num_test_parameters: int = Option(50, help='Number of test parameters'),
          sampling_mode: str = Option('uniform', help='Sampling mode for sampling the training parameters'),
          oversampling_size: int = Option(10, help='Margin in pixels used for oversampling'),
          reference_parameter: str = Option('1.', help='Reference parameter, either a number or a list of numbers',
@@ -203,14 +204,15 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                       flow.to_numpy()[..., 0].flatten() / flow.full_shape[0]):
                     f.write(f'{x}\t{y}\t{u}\t{v}\n')
 
-
     singular_vectors, singular_values = pod(list_initial_momenta, num_modes=len(parameters),
                                             return_singular_values='all')
 
     if write_results:
-        with open(filepath_prefix + 'singular_values_initial_momenta.txt', 'w') as f:
+        with open(f'{filepath_prefix}/singular_values_initial_momenta.txt', 'w') as f:
             for s in singular_values:
                 f.write(f'{s}\n')
+
+    test_parameters = fom.parameter_space.sample(num_test_parameters, sampling_mode)
 
     for basis_size in range(1, len(singular_vectors)):
         reduced_initial_momenta = singular_vectors[:basis_size]
@@ -259,9 +261,133 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                         f"{sum_relative_error_restricted / num_params}\t"
                         f"{sum_absolute_error / num_params}\t{sum_relative_error / num_params}\n")
 
+        # Train neural network for reduced coefficients
+        import random
+        import torch
+        training_data = [(torch.Tensor([mu, ]), torch.Tensor(coeff)) for mu, coeff in
+                         zip(parameters, reduced_coefficients)]
+        random.shuffle(training_data)
+        validation_data = training_data[:int(0.1 * len(training_data)) + 1]
+        training_data = training_data[int(0.1 * len(training_data)) + 2:]
 
-# Learn map from parameter to reduced coefficients or directly to (unreduced) initial momenta!!!
+        #self.compute_normalization(training_data, validation_data)
+        #training_data = self.normalize(training_data)
+        #validation_data = self.normalize(validation_data)
 
+        trainer_params={}
+        hidden_layers=[20, 20, 20]
+        training_params={}
+        restarts = 10
+
+        from nonlinear_mor.utils.torch.neural_networks import FullyConnectedNetwork
+        from nonlinear_mor.utils.torch.trainer import Trainer
+
+        def train_neural_network(layers_sizes, training_data, validation_data,
+                                 trainer_params={}, training_params={}):
+            neural_network = FullyConnectedNetwork(layers_sizes)
+            trainer = Trainer(neural_network, **trainer_params)
+            best_loss, _ = trainer.train(training_data, validation_data, **training_params)
+            return trainer.network, best_loss
+
+        def multiple_restarts_training(training_data, validation_data, layers_sizes, restarts,
+                                       trainer_params={}, training_params={}):
+            best_neural_network = None
+            best_loss = None
+
+            for _ in range(restarts):
+                neural_network, loss = train_neural_network(layers_sizes, training_data, validation_data,
+                                                                 trainer_params, training_params)
+                if best_loss is None or loss is None or best_loss > loss:
+                    best_neural_network = neural_network
+                    best_loss = loss
+
+            return best_neural_network, best_loss
+
+        layers_sizes = [fom.parameter_space.dim] + list(hidden_layers) + [basis_size]
+        best_ann, best_loss = multiple_restarts_training(training_data, validation_data, layers_sizes,
+                                                         restarts, trainer_params, training_params)
+        print(f"NN training: {basis_size}: {best_loss}")
+
+        training_data = [(torch.Tensor([mu, ]), torch.Tensor(momenta.flatten())) for mu, momenta in
+                         zip(parameters, list_initial_momenta)]
+        random.shuffle(training_data)
+        validation_data = training_data[:int(0.1 * len(training_data)) + 1]
+        training_data = training_data[int(0.1 * len(training_data)) + 2:]
+
+        layers_sizes = [fom.parameter_space.dim] + list(hidden_layers) + [list_initial_momenta[0].flatten().shape[0]]
+        best_ann_momenta, best_loss_momenta = multiple_restarts_training(training_data, validation_data, layers_sizes,
+                                                                         restarts, trainer_params, training_params)
+        print(f"NN training momenta: {basis_size}: {best_loss_momenta}")
+
+        sum_absolute_error_restricted = 0.
+        sum_relative_error_restricted = 0.
+        sum_absolute_error = 0.
+        sum_relative_error = 0.
+
+        momenta_sum_absolute_error_restricted = 0.
+        momenta_sum_relative_error_restricted = 0.
+        momenta_sum_absolute_error = 0.
+        momenta_sum_relative_error = 0.
+
+        for mu in test_parameters:
+            initial_momenta = np.array(singular_vectors[:basis_size]).T @ best_ann(torch.Tensor([mu, ])).detach().numpy().flatten()
+            flow = gs.compute_time_evolution_of_diffeomorphisms(initial_momenta.reshape(reference_landmarks.shape),
+                                                                reference_landmarks,
+                                                                mins=mins, maxs=maxs, spatial_shape=u_ref.full_shape)
+            transformed_input = u_ref.push_forward(flow)
+            absolute_error = (u - transformed_input).norm
+            relative_error = absolute_error / u.norm
+            if restriction:
+                absolute_error_restricted = (u - transformed_input).get_norm(restriction=restriction)
+                relative_error_restricted = absolute_error_restricted / u.get_norm(restriction=restriction)
+            else:
+                absolute_error_restricted = absolute_error
+                relative_error_restricted = relative_error
+            sum_absolute_error_restricted += absolute_error_restricted
+            sum_relative_error_restricted += relative_error_restricted
+            sum_absolute_error += absolute_error
+            sum_relative_error += relative_error
+            print(f"Relative error with projected initial momenta for parameter mu={mu}: "
+                  f"{relative_error_restricted}")
+            if write_results:
+                with open(f'{filepath_prefix}/test_errors_neural_network.txt', 'a') as f:
+                    f.write(f"{mu}\t{absolute_error_restricted}\t{relative_error_restricted}\t"
+                            f"{absolute_error}\t{relative_error}\n")
+
+            initial_momenta = best_ann_momenta(torch.Tensor([mu, ])).detach().numpy().flatten()
+            flow = gs.compute_time_evolution_of_diffeomorphisms(initial_momenta.reshape(reference_landmarks.shape),
+                                                                reference_landmarks,
+                                                                mins=mins, maxs=maxs, spatial_shape=u_ref.full_shape)
+            transformed_input = u_ref.push_forward(flow)
+            absolute_error = (u - transformed_input).norm
+            relative_error = absolute_error / u.norm
+            if restriction:
+                absolute_error_restricted = (u - transformed_input).get_norm(restriction=restriction)
+                relative_error_restricted = absolute_error_restricted / u.get_norm(restriction=restriction)
+            else:
+                absolute_error_restricted = absolute_error
+                relative_error_restricted = relative_error
+            momenta_sum_absolute_error_restricted += absolute_error_restricted
+            momenta_sum_relative_error_restricted += relative_error_restricted
+            momenta_sum_absolute_error += absolute_error
+            momenta_sum_relative_error += relative_error
+            print(f"Relative error with projected initial momenta for parameter mu={mu}: "
+                  f"{relative_error_restricted}")
+            if write_results:
+                with open(f'{filepath_prefix}/test_errors_neural_network_momenta.txt', 'a') as f:
+                    f.write(f"{mu}\t{absolute_error_restricted}\t{relative_error_restricted}\t"
+                            f"{absolute_error}\t{relative_error}\n")
+
+        if write_results:
+            num_params = len(test_parameters)
+            with open(f'{filepath_prefix}/average_test_errors_neural_network.txt', 'a') as f:
+                f.write(f"{basis_size}\t{sum_absolute_error_restricted / num_params}\t"
+                        f"{sum_relative_error_restricted / num_params}\t"
+                        f"{sum_absolute_error / num_params}\t{sum_relative_error / num_params}\n")
+            with open(f'{filepath_prefix}/average_test_errors_neural_network_momenta.txt', 'a') as f:
+                f.write(f"{basis_size}\t{momenta_sum_absolute_error_restricted / num_params}\t"
+                        f"{momenta_sum_relative_error_restricted / num_params}\t"
+                        f"{momenta_sum_absolute_error / num_params}\t{momenta_sum_relative_error / num_params}\n")
 
 if __name__ == "__main__":
     run(main)
