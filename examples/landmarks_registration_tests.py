@@ -17,13 +17,13 @@ from automatic_landmark_detection import place_landmarks_on_edges
 def main(example: str = Argument(..., help='Path to the example to execute, for instance '
                                            'example="1d.burgers.piecewise_constant.burgers_1d_landmarks_analytical"'),
          spatial_shape: List[int] = Argument(..., help='Number of unknowns in the spatial coordinate directions'),
+         num_time_steps: int = Option(100, help='Number of time steps in the high-fidelity solutions'),
          place_landmarks_automatically: bool = Option(False, help='Determines whether to run an automatic procedure to '
                                                                   'place landmarks or whether they are provided by the '
                                                                   'problem'),
          num_landmarks: int = Option(20, help='Number of landmarks to use when placing them automatically'),
          landmarks_labeled: bool = Option(True, help='Determines whether the landmarks are labeled'),
          many_landmarks: bool = Option(False, help='Determines whether to use many landmarks provided by the FOM'),
-         num_time_steps: int = Option(100, help='Number of time steps in the high-fidelity solutions'),
          additional_parameters: str = Option('{}', help='Additional parameters to pass to the full-order model',
                                              callback=ast.literal_eval),
          num_training_parameters: int = Option(50, help='Number of test parameters'),
@@ -34,7 +34,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                            callback=ast.literal_eval),
          sigma: float = Option(0.1, help='Registration parameter `sigma`'),
          kernel_sigma: float = Option(4., help='Kernel shape parameter `sigma`'),
-         kernel_dist_sigma: float = Option(4., help='Kernel shape parameter `sigma` for unlabeled case'),
+         kernel_dist_sigma: float = Option(-1, help='Kernel shape parameter `sigma` for unlabeled case (if -1, the same value as `kernel_sigma` is used)'),
          write_results: bool = Option(True, help='Determines whether or not to write results to disc (useful during '
                                                  'development)')):
 
@@ -138,6 +138,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
         else:
             target_landmarks = place_landmarks_on_edges(u_ref.to_numpy(), num_landmarks)
         initial_momenta = None
+        if kernel_dist_sigma == -1:
+            kernel_dist_sigma = kernel_sigma
         result = gs.register(reference_landmarks, target_landmarks, initial_momenta=initial_momenta, sigma=sigma,
                              return_all=True, landmarks_labeled=landmarks_labeled,
                              kwargs_kernel_dist={"sigma": kernel_dist_sigma})
