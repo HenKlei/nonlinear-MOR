@@ -35,7 +35,7 @@ def main(filepath: str = Argument(..., help='Path to the folder containing the r
         restriction = np.s_[...]
 
     parameters = fom.parameter_space.sample(num_test_parameters, sampling_mode)
-    basis_sizes = range(11, max_reduced_basis_size + 1)
+    basis_sizes = range(1, max_reduced_basis_size + 1)
     timestr = time.strftime("%Y%m%d-%H%M%S")
 
     for basis_size in basis_sizes:
