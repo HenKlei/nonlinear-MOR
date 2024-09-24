@@ -7,6 +7,7 @@ from typing import List
 import numpy as np
 import random
 import torch
+from multiprocess import Pool
 
 import geodesic_shooting
 from geodesic_shooting.utils.reduced import pod
@@ -67,6 +68,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
          sigma: float = Option(0.1, help='Registration parameter `sigma`'),
          kernel_sigma: float = Option(4., help='Kernel shape parameter `sigma`'),
          kernel_dist_sigma: float = Option(-1, help='Kernel shape parameter `sigma` for unlabeled case (if -1, the same value as `kernel_sigma` is used)'),
+         num_workers: int = Option(1, help='Number of workers in the worker pool'),
          write_results: bool = Option(True, help='Determines whether or not to write results to disc (useful during '
                                                  'development)')):
 
@@ -113,7 +115,8 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
 
     parameters = fom.parameter_space.sample(num_training_parameters, sampling_mode)
 
-    gs = geodesic_shooting.LandmarkShooting(kwargs_kernel={"sigma": kernel_sigma})
+    gs = geodesic_shooting.LandmarkShooting(kwargs_kernel={"sigma": kernel_sigma}, num_landmarks=num_landmarks,
+                                            dim=u_ref.dim)
     mins = np.zeros(u_ref.dim)
     maxs = np.ones(u_ref.dim)
 
@@ -160,10 +163,9 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             for reference_landmark in reference_landmarks:
                 summary_file.write(str(reference_landmark) + '\n')
 
-    list_initial_momenta = []
     snapshots = []
 
-    for mu in parameters:
+    def process_parameter(mu):
         if not place_landmarks_automatically:
             get_landmarks = load_landmark_function(example)
             target_landmarks = get_landmarks(mu=mu)
@@ -171,13 +173,14 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             target_landmarks = place_landmarks_on_edges(u_ref.to_numpy(), num_landmarks)
         initial_momenta = None
         if kernel_dist_sigma == -1:
-            kernel_dist_sigma = kernel_sigma
+            kernel_dist_sigma_update = kernel_sigma
+        else:
+            kernel_dist_sigma_update = kernel_dist_sigma
         result = gs.register(reference_landmarks, target_landmarks, initial_momenta=initial_momenta, sigma=sigma,
                              return_all=True, landmarks_labeled=landmarks_labeled,
-                             kwargs_kernel_dist={"sigma": kernel_dist_sigma})
+                             kwargs_kernel_dist={"sigma": kernel_dist_sigma_update})
         registered_landmarks = result['registered_landmarks']
         initial_momenta = result['initial_momenta']
-        list_initial_momenta.append(initial_momenta)
 
         filepath = f'{filepath_prefix}/mu_{str(mu).replace(".", "_")}/'
         pathlib.Path(filepath).mkdir(parents=True, exist_ok=True)
@@ -237,6 +240,10 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                       flow.to_numpy()[..., 1].flatten() / flow.full_shape[1],
                                       flow.to_numpy()[..., 0].flatten() / flow.full_shape[0]):
                     f.write(f'{x}\t{y}\t{u}\t{v}\n')
+        return initial_momenta
+
+    with Pool(num_workers) as pool:
+        list_initial_momenta = pool.map(process_parameter, parameters)
 
     test_parameters = fom.parameter_space.sample(num_test_parameters, sampling_mode)
 
