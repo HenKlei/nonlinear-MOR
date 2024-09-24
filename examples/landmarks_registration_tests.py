@@ -371,6 +371,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                                                                 reference_landmarks,
                                                                 mins=mins, maxs=maxs, spatial_shape=u_ref.full_shape)
             transformed_input = u_ref.push_forward(flow)
+            u = fom.solve(mu)
             absolute_error = (u - transformed_input).norm
             relative_error = absolute_error / u.norm
             if restriction:
