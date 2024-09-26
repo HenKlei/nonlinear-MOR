@@ -112,4 +112,6 @@ def place_landmarks_on_edges(input_img, num_landmarks,
     for line_object in line_objects:
         landmarks.extend(line_object.get_uniform_landmarks(int(num_landmarks*line_object.length()/total_line_length)))
     landmarks = np.array(landmarks)
+    for i in range(img.ndim):
+        landmarks[..., i] /= img.shape[i]
     return landmarks
