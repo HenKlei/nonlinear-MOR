@@ -109,7 +109,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     else:
         assert landmarks_labeled is False
         assert u_ref.dim == 2
-        reference_landmarks = place_landmarks_on_edges(u_ref.to_numpy(), num_landmarks)
+        reference_landmarks = place_landmarks_on_edges(u_ref.to_numpy().T, num_landmarks)
 
     num_landmarks = len(reference_landmarks)
 
@@ -170,7 +170,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             get_landmarks = load_landmark_function(example)
             target_landmarks = get_landmarks(mu=mu)
         else:
-            target_landmarks = place_landmarks_on_edges(u_ref.to_numpy(), num_landmarks)
+            target_landmarks = place_landmarks_on_edges(u_ref.to_numpy().T, num_landmarks)
         initial_momenta = None
         if kernel_dist_sigma == -1:
             kernel_dist_sigma_update = kernel_sigma
