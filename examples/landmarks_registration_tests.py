@@ -166,11 +166,12 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
     snapshots = []
 
     def process_parameter(mu):
+        u_mu = fom.solve(mu)
         if not place_landmarks_automatically:
             get_landmarks = load_landmark_function(example)
             target_landmarks = get_landmarks(mu=mu)
         else:
-            target_landmarks = place_landmarks_on_edges(u_ref.to_numpy().T, num_landmarks)
+            target_landmarks = place_landmarks_on_edges(u_mu.to_numpy().T, num_landmarks)
         initial_momenta = None
         if kernel_dist_sigma == -1:
             kernel_dist_sigma_update = kernel_sigma
@@ -191,7 +192,6 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
         flow = gs.compute_time_evolution_of_diffeomorphisms(initial_momenta, reference_landmarks,
                                                             mins=mins, maxs=maxs, spatial_shape=u_ref.full_shape)
 
-        u_mu = fom.solve(mu)
         snapshots.append(u_mu)
         u_red = u_ref.push_forward(flow)
 
@@ -199,6 +199,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             # Compute error in transformed snapshot and write to file
             with open(results_filepath + '/registration_errors.txt', 'a') as f:
                 f.write(f'{mu}\t'
+                        f'{(u_mu-u_red).norm / u_mu.norm}\t'
                         f'{(u_mu-u_red).get_norm(restriction=restriction) / u_mu.get_norm(restriction=restriction)}\n')
             with open(filepath + 'initial_momenta.txt', 'w') as f:
                 for l in initial_momenta:
