@@ -124,7 +124,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
         results_filepath = f'{filepath_prefix}/results'
         pathlib.Path(results_filepath).mkdir(parents=True, exist_ok=True)
         with open(results_filepath + '/registration_errors.txt', 'w') as f:
-            f.write('Parameter\tRelative error\n')
+            f.write('Parameter\tAbsolute error\tRelative error\n')
         with open(results_filepath + '/reference_landmarks.txt', 'w') as f:
             for l in reference_landmarks:
                 f.write(f"{' '.join(str(x) for x in l)}\n")
@@ -195,6 +195,9 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
 
         snapshots.append(u_mu)
         u_red = u_ref.push_forward(flow)
+        u_mu.save(filepath + 'true_solution.png', restriction=restriction)
+        u_red.save(filepath + 'reduced_solution.png', restriction=restriction)
+        (u_mu - u_red).save(filepath + 'difference.png', restriction=restriction)
 
         if write_results:
             # Compute error in transformed snapshot and write to file
@@ -204,7 +207,6 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
                         f'{(u_mu-u_red).get_norm(restriction=restriction) / u_mu.get_norm(restriction=restriction)}\n')
             with open(filepath + 'initial_momenta.txt', 'w') as f:
                 for l in initial_momenta:
-                    f.write(f"{' '.join(str(x) for x in l)}\n")
                     f.write(f"{' '.join(str(x) for x in l)}\n")
             with open(filepath + 'target_landmarks.txt', 'w') as f:
                 for l in target_landmarks:
