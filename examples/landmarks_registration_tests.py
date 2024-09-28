@@ -150,6 +150,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             summary_file.write('Sigma in landmark shooting: ' + str(sigma) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Shape parameter of kernel: ' + str(kernel_sigma) + '\n')
+            summary_file.write('Shape parameter of distance kernel in unlabeled landmark shooting: ' + str(kernel_dist_sigma) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Place landmarks automatically: ' + str(place_landmarks_automatically) + '\n')
             summary_file.write('Number of landmarks: ' + str(num_landmarks) + '\n')
