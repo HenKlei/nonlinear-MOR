@@ -12,7 +12,9 @@ class Line:
         return np.linalg.norm(self.starting_point - self.end_point)
 
     def get_uniform_landmarks(self, n):
-        return [self.starting_point + i / n * self.direction for i in range(n)]
+        if n <= 1:
+            n = 2
+        return [self.starting_point + i / (n - 1) * self.direction for i in range(n)]
 
     def nearest_point_on_line(self, point):
         r0 = self.starting_point
@@ -49,7 +51,8 @@ def place_landmarks_on_edges(input_img, num_landmarks,
                                  "threshold": 30,  # minimum number of votes (intersections in Hough grid cell)
                                  "minLineLength": 10,  # minimum number of pixels making up a line
                                  "maxLineGap": 20},  # maximum gap in pixels between connectable line segments
-                             remove_parallel_lines=True, remove_parallel_lines_threshold=1
+                             remove_parallel_lines=True, remove_parallel_lines_threshold=1,
+                             mins=np.array([0., 0.]), maxs=np.array([1., 1.])
                              ):
     img = input_img.copy()
     min_val = np.min(img)
@@ -111,7 +114,20 @@ def place_landmarks_on_edges(input_img, num_landmarks,
     landmarks = []
     for line_object in line_objects:
         landmarks.extend(line_object.get_uniform_landmarks(int(num_landmarks*line_object.length()/total_line_length)))
-    landmarks = np.array(landmarks)
-    for i in range(img.ndim):
-        landmarks[..., i] /= img.shape[i]
+    true_landmarks = []
+    for l in landmarks:
+        landmark_accepted = True
+        for i in range(img.ndim):
+            l[i] /= img.shape[i]
+            if not (mins[i] <= l[i] <= maxs[i]):
+                landmark_accepted = False
+        if landmark_accepted:
+            true_landmarks.append(l)
+    landmarks = np.array(true_landmarks)
+    #import matplotlib.pyplot as plt
+    #plt.imshow(img, origin="lower")
+    #plt.scatter(landmarks[..., 0], landmarks[..., 1], c="red")
+    #plt.show()
+    #for i in range(img.ndim):
+    #    landmarks[..., i] /= img.shape[i]
     return landmarks
