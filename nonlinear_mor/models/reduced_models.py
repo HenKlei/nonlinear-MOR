@@ -16,6 +16,8 @@ class ReducedSpacetimeModel:
         self.reduced_velocity_fields = reduced_velocity_fields
         self.neural_network = neural_network
         self.geodesic_shooter = geodesic_shooter
+        if not self.geodesic_shooter.regularizer.fourier:
+            self.geodesic_shooter.regularizer.init_matrices(self.reference_solution.full_shape)
         self.normalize_input = normalize_input
         self.denormalize_output = denormalize_output
 

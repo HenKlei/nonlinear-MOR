@@ -75,7 +75,7 @@ def main(example: str = Argument(..., help='Path to the example to execute, for 
             summary_file.write('------------------\n')
             summary_file.write('Sigma in landmark shooting: ' + str(sigma) + '\n')
             summary_file.write('------------------\n')
-            summary_file.write('Sigma of kernel: ' + str(kernel_sigma) + '\n')
+            summary_file.write('Shape parameter of kernel: ' + str(kernel_sigma) + '\n')
             summary_file.write('------------------\n')
             summary_file.write('Reference landmarks (' + str(reference_landmarks.shape[0]) + ' in total):\n')
             for reference_landmark in reference_landmarks:
